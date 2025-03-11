@@ -1,10 +1,3 @@
-#----------------------------------------------------------#
-# 1. Set up  -----
-#----------------------------------------------------------#
-library(here)
-
-# Load configuration file
-source(here::here("R/00_Config_file.R"))
 
 
 #----------------------------------------------------------#
@@ -23,36 +16,36 @@ assessments_reduced <- assessments|>
 # mammal checklist for Himalaya
 checklist <- read.csv(paste0(data_storage_path,"species_assessment/checklists/verts_alpine_generalists.csv"))|>
   filter(group=="mammals")|>
-  filter(Mountain_range=="Himalaya")
+  filter(Mountain_range=="Northern Andes")
 
 # mammal checklist for Himalaya
 checklist <- readxl::read_xlsx(paste0(data_storage_path,"species_assessment/checklists/alpine_mammal_database.xlsx"))|>
-  filter(Mountain_range=="Himalaya")
+  filter(Mountain_range=="Northern Andes")
 
 
 checklist_reduced <-checklist|>
   select(sciname,Mountain_range,min_elevation,max_elevation,mean_treeline)
 
 # leftjoin
-assessment_himalaya <- checklist_reduced|>
+assessment_mountain <- checklist_reduced|>
   left_join(assessments_reduced,by="sciname")|>
   mutate(redlistCategory = coalesce(redlistCategory, "Not assessed"))
-  
+
 
 #----------------------------------------------------------#
 #        lowland vs generalists vs specialists
 #----------------------------------------------------------#
 
-assessment_generalists <- assessment_himalaya|>
+assessment_generalists <- assessment_mountain|>
   filter(max_elevation >= mean_treeline & min_elevation <= mean_treeline)|>
   mutate(Group = "Generalists")
 
 
-assessment_specialists <- assessment_himalaya|>
+assessment_specialists <- assessment_mountain|>
   filter(max_elevation >= mean_treeline & min_elevation >= mean_treeline)|>
   mutate(Group = "Specialists")
 
-assessment_lowland <- assessment_himalaya|>
+assessment_lowland <- assessment_mountain|>
   filter(max_elevation <= mean_treeline & min_elevation <= mean_treeline)|>
   mutate(Group = "Lowland")
 
