@@ -19,50 +19,16 @@
 # 1. Load packages -----
 #----------------------------------------------------------#
 
-if(!exists("update_repo_packages")){
-  update_repo_packages <- TRUE
-}
-
-if(update_repo_packages == TRUE){
-  
-  # install fossilpol from github
-  if (!exists("already_installed_fossilpol")){
-    already_installed_fossilpol <- FALSE
-  }
-  
-  if(already_installed_fossilpol == FALSE){
-    devtools::install_github("HOPE-UIB-BIO/fossilpol",
-                             quiet = FALSE,
-                             upgrade = FALSE)
-    already_installed_fossilpol <- TRUE
-  }
-  
-  if (!exists("already_synch")){
-    already_synch <- FALSE
-  }
-  
-  if(already_synch == FALSE){
-    library(here)
-    # synchronise the package versions
-    renv::restore(lockfile = here::here( "renv/library_list.lock"))
-    already_synch <- TRUE
-    
-    # save snapshot of package versions
-    # renv::snapshot(lockfile =  "renv/library_list.lock")  # do only for update
-  }
-}
-
 # define packages
 package_list <- 
   c(
-    "assertthat",
     "devtools",
-    "fossilpol",
     "here",      
     "renv",       
-    "roxygen2",   
     "tidyverse",  
-    "usethis"   
+    "usethis",
+    "ggplot2",
+    "purrr"
   )
 
 # load all packages
@@ -100,37 +66,32 @@ sapply(
 # 4. Authorise the user -----
 #----------------------------------------------------------#
 
-# if applicable
+# specify here the data storage path
 
-#----------------------------------------------------------#
-# 5. Define variables -----
-#----------------------------------------------------------#
+auth_tibble <-
+  tibble(
+    name = c("losch5089","lotta"),
+    paths = c(
+      "C:/Users/losch5089/OneDrive - University of Bergen/Desktop/Manuscripts/Ch_2_Conservation_assessment_mountains/Datasets/",
+      "C:/Users/lotta/OneDrive - University of Bergen/Desktop/Manuscripts/Ch_2_Conservation_assessment_mountains/Datasets/"
+    )
+  )
 
+sys_info <- Sys.info()
 
-#----------------------------------------------------------#
-# 6. Graphical options -----
-#----------------------------------------------------------#
+username <- 
+  sys_info["user"]
 
-## examples
-#set ggplot output
-ggplot2::theme_set(
-  ggplot2::theme_classic())
+data_storage_path <-
+  auth_tibble |> 
+  dplyr::filter(name == username) |> 
+  dplyr::select(paths) |> 
+  pluck(1)
 
-# define general
-text_size = 10
-line_size = 0.1
-
-# define output sizes
-image_width <- 16
-image_height <- 12
-image_units <- "cm"
-
-# define pallets
-
-# define common color
 
 #----------------------------------------------------------#
 # 7. Save current config setting -----
 #----------------------------------------------------------#
 
 current_setting <- .extract.config.data()
+

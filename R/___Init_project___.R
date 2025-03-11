@@ -3,11 +3,7 @@
 #
 #                     Project name
 #
-#                     Project setup
-#                 
-#
-#   O. Mottl, S. Flantua, K. Bhatta, V. Felde, A. Seddon 
-#                         2021
+
 #
 #----------------------------------------------------------#
 
@@ -35,41 +31,59 @@ renv::deactivate()
 #----------------------------------------------------------#
 
 package_list <- 
-  c(
-    "assertthat",
-    "devtools",
+  c("ggplot2",
+    "leaflet",
     "here",
-    "httpgd",
+    "sf",
+    "stringr",
+    "tidyverse",
+    "usethis",
+    "htmltools",
+    "raster",
+    "fasterize",
+    "GIFT",
+    "remotes",
+    "rgdal",
+    "rgeos",
+    "CoordinateCleaner",
+    "tidyr",
+    "elevatr",
+    "purrr",
+    "openxlsx",
+    "data.table",
+    "readxl",
+    "stringr",
+    "broom",
+    "rnaturalearthdata",
+    "rnaturalearth",
+    "insight",
+    "ggrepel",
+    "mgcv",
+    "performance",
+    "patchwork",
+    "biscale",
+    "svglite",
+    "gridExtra",
+    "palettes",
+    "writexl",
+    "gt",
     "janitor",
-    "jsonlite",
-    "languageserver",
-    "renv",       
-    "roxygen2",   
-    "tidyverse",  
-    "usethis"   
+    "plotly",
+    "visdat"
   )
 
-# define helper function
-install_packages <-
-  function(pkgs_list) {
-
-    # install all packages in the lst from CRAN
-    sapply(pkgs_list, utils::install.packages, character.only = TRUE)
-
-    # install RFossilpol from GitHub
-    # devtools::install_github(
-    #  "HOPE-UIB-BIO/R-Fossilpol-package",
-    #  quiet = FALSE,
-    #  upgrade = FALSE
-    )
-  }
+remotes::install_github(
+  repo = "HOPE-UIB-BIO/R-Utilpol-package",
+  ref = "HEAD",
+  quiet = FALSE,
+  upgrade = "ask"
+)
 
 #----------------------------------------------------------#
 # Step 4: Install packages to the machine
 #----------------------------------------------------------#
 
-install_packages(package_list)
-
+sapply(package_list, utils::install.packages, character.only = TRUE)
 
 #----------------------------------------------------------#
 # Step 5: Activate 'renv' project
@@ -77,45 +91,77 @@ install_packages(package_list)
 
 renv::activate()
 
-
 #----------------------------------------------------------#
 # Step 6: Install packages to the project
 #----------------------------------------------------------#
 
-install_packages(package_list)
+package_list <- 
+  c("devtools",
+    "ggplot2",
+    "leaflet",
+    "here",
+    "sf",
+    "stringr",
+    "tidyverse",
+    "usethis",
+    "htmltools",
+    "raster",
+    "fasterize",
+    "GIFT",
+    "remotes",
+    "rgdal",
+    "rgeos",
+    "CoordinateCleaner",
+    "tidyr",
+    "elevatr",
+    "purrr",
+    "openxlsx",
+    "data.table",
+    "readxl",
+    "stringr",
+    "broom",
+    "rnaturalearthdata",
+    "rnaturalearth",
+    "insight",
+    "ggrepel",
+    "mgcv",
+    "performance",
+    "patchwork",
+    "biscale",
+    "svglite",
+    "gridExtra"
+  )
 
+
+sapply(package_list, utils::install.packages, character.only = TRUE)
+
+remotes::install_github(
+  repo = "HOPE-UIB-BIO/R-Utilpol-package",
+  ref = "HEAD",
+  quiet = FALSE,
+  upgrade = "ask"
+)
 
 #----------------------------------------------------------#
 # Step 7: Synchronize package versions with the project 
 #----------------------------------------------------------#
+renv::snapshot(lockfile = "renv/library_list.lock")
 
 library(here)
-
-# if there is no lock file present make a new snapshot
-if
-(
-  isFALSE("library_list.lock" %in% list.files(here::here("renv")))
-) {
-  renv::snapshot(lockfile = here::here("renv/library_list.lock"))
-} else {
-  renv::restore(lockfile = here::here("renv/library_list.lock"))
-}
+renv::restore(lockfile = here::here( "renv/library_list.lock"))
+renv::snapshot()
 
 #----------------------------------------------------------#
 # Step 8: GitHub hook
 #----------------------------------------------------------#
 
 # Prevent commiting to the Main
-usethis::use_git_hook(
-  hook = "pre-commit",
-  script = '#!/bin/sh
-  branch="$(git rev-parse --abbrev-ref HEAD)"
-  if [ "$branch" = "main" ]; then
-  echo "You cannot commit directly to main branch. Please make a new branch"
-  exit 1
-  fi'
-)
-
-#----------------------------------------------------------#
-# Step 9: Run the project 
-#----------------------------------------------------------#
+#usethis::use_git_hook(
+  #hook = "pre-commit",
+  #script = '#!/bin/sh
+  #branch="$(git rev-parse --abbrev-ref HEAD)"
+  #if [ "$branch" = "main" ]; then
+  #echo "You cannot commit directly to main branch. Please make a new branch"
+  #exit 1
+  #fi'
+#)
