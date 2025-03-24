@@ -5,7 +5,7 @@
 #----------------------------------------------------------#
 
 # IUCN assessment
-assessments <- read.csv(paste0(data_storage_path,"species_assessment/IUCN/mammals/assessments.csv"))
+assessments <- read.csv(paste0(data_storage_path,"Datasets/species_assessment/IUCN/mammals/assessments.csv"))
 
 assessments_reduced <- assessments|>
   select(scientificName,redlistCategory,redlistCriteria,
@@ -14,12 +14,12 @@ assessments_reduced <- assessments|>
   rename(sciname=scientificName)
 
 # mammal checklist for Himalaya
-checklist <- read.csv(paste0(data_storage_path,"species_assessment/checklists/verts_alpine_generalists.csv"))|>
+checklist <- read.csv(paste0(data_storage_path,"Datasets/species_assessment/checklists/verts_alpine_generalists.csv"))|>
   filter(group=="mammals")|>
   filter(Mountain_range=="Central European Highlands")
 
 # mammal checklist for Himalaya
-checklist <- readxl::read_xlsx(paste0(data_storage_path,"species_assessment/checklists/alpine_mammal_database.xlsx"))|>
+checklist <- readxl::read_xlsx(paste0(data_storage_path,"Datasets/species_assessment/checklists/alpine_mammal_database.xlsx"))|>
   filter(Mountain_range=="Central European Highlands")
 
 

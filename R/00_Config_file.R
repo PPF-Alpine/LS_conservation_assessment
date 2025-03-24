@@ -72,8 +72,8 @@ auth_tibble <-
   tibble(
     name = c("losch5089","lotta"),
     paths = c(
-      "C:/Users/losch5089/OneDrive - University of Bergen/Desktop/Manuscripts/Ch_2_Conservation_assessment_mountains/Datasets/",
-      "C:/Users/lotta/OneDrive - University of Bergen/Desktop/Manuscripts/Ch_2_Conservation_assessment_mountains/Datasets/"
+      "C:/Users/losch5089/OneDrive - University of Bergen/Desktop/Manuscripts/Ch_2_Conservation_assessment_mountains/",
+      "C:/Users/lotta/OneDrive - University of Bergen/Desktop/Manuscripts/Ch_2_Conservation_assessment_mountains/"
     )
   )
 
