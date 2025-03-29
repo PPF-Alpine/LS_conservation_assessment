@@ -1,3 +1,6 @@
+birds <- assessment_combined|>
+  filter(source=="Birds_Northern_Andes")
+
 
 # get tje proportions for the categories
 assessment_proportions <- assessment_combined|>

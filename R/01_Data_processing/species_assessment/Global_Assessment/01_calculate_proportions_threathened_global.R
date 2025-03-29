@@ -1,3 +1,4 @@
+
 # get tje proportions for the categories
 assessment_proportions <- assessment_combined|>
   group_by(Mountain_range,Group,redlistCategory)|>
@@ -11,9 +12,9 @@ assessment_proportions <- assessment_combined|>
                                              "Least Concern", 
                                              "Data Deficient", "Not assessed")))
 
-
-library(ggplot2)
-library(dplyr)
+#----------------------------------------------------------#
+#        Filter by mountain range 
+#----------------------------------------------------------#
 
 # Define mountain selection
 mountain_selection <- c("Himalaya", 
@@ -45,8 +46,11 @@ group_counts <- assessment_combined |>
   filter(Mountain_range %in% mountain_selection) |> 
   count(Mountain_range, Group, name = "Count")
 
+#----------------------------------------------------------#
+#        Plot for each mountain range 
+#----------------------------------------------------------#
 
-# Plot using facet_wrap by mountain range
+
 x11()
 ggplot(assessment_proportions |> filter(Mountain_range %in% mountain_selection),
        aes(x = factor(Group, levels = c("Generalists", "Montane", "Specialists")),
