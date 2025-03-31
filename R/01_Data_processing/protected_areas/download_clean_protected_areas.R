@@ -104,8 +104,8 @@ leaflet() |>
 
 # Save as a GeoPackage
 st_write(
-  wdpa_himalaya,
-  paste0(data_storage_path, "Datasets/protected_areas/Himalaya/wdpa_himalaya.gpkg"),
+  clean_PAs_himalaya,
+  paste0(data_storage_path, "Datasets/protected_areas/Himalaya/clean_PAs_himalaya.gpkg"),
   delete_layer = TRUE
 )
 
