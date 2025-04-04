@@ -31,6 +31,13 @@ checklist_reptiles <- readxl::read_xlsx(paste0(data_storage_path,"Datasets/speci
 
 checklist <- bind_rows(checklist_mammals,checklist_reptiles,checklist_birds)
 
+checklist <-checklist|>
+  mutate(max_elevation = if_else(
+  Mountain_range == "North European Highlands" & max_elevation > 2000,
+  2000,
+  max_elevation
+))
+
 #----------------------------------------------------------#
 #        Categorise alpine groups 
 #----------------------------------------------------------#
