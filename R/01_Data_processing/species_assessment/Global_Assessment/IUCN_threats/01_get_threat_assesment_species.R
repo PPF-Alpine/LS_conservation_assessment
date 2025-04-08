@@ -47,14 +47,10 @@ checklist_reduced <-checklist|>
   filter(max_elevation >= mean_treeline)
 
 
-
-
 checklist_test <- checklist_reduced|>
   filter(Mountain_range=="Northern Andes")
 
   
-
-
 #----------------------------------------------------------#
 #        get the species names in format
 #----------------------------------------------------------#

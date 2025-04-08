@@ -1,15 +1,8 @@
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(stringr)
-library(scales)
-library(dplyr)
-library(tidyr)
-library(stringr)
-library(ggplot2)
+
 library(scales)
 library(purrr)
 library(patchwork)
+library(rredlist)
 
 #----------------------------------------------------------#
 #        read in the threats
@@ -46,8 +39,6 @@ stress_classification <- rl_stresses(key=iucn_key)
 stress_classification_codes <- stress_classification$stresses |>
   filter(code %in% c("1_1", "1_2", "1_3", "2_1", "2_2", "2_3")) |>
   mutate(code = str_replace_all(code, "_", "."))
-
-str(threat_classification$threats, max.level = 2)
 
 
 #----------------------------------------------------------#
@@ -173,4 +164,27 @@ plots <- compact(plots)
 
 # Display all in a grid
 wrap_plots(plots, ncol = 3)
+
+#----------------------------------------------------------#
+#         safe plots 
+#----------------------------------------------------------#
+wrap_plots(plots) +
+  plot_annotation(
+    title = "IUCN stresses"
+  ) &
+  theme(
+    plot.title = element_text(size = 12, face = "bold", hjust = 0.5)
+  )
+
+today <- format(Sys.Date(), "%Y%m%d")
+
+# Define file path
+output_path <- paste0(data_storage_path, "Outputs/Figures/m", today, ".jpg")
+
+# Save the plot
+ggsave(output_path,
+       plot = last_plot(),      # or assign your full plot to a variable and use it here
+       width = 14, height = 10, # adjust size as needed
+       dpi = 300,               # high-quality output
+       device = "jpeg")
 
