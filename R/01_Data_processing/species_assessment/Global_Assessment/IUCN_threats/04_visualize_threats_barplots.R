@@ -84,8 +84,3 @@ ggplot(threat_props, aes(x = elevation_band, y = prop, fill = description)) +
   )
 
 
-
-library(lme4)
-
-model_bandwise <- lmer(prop ~ threats_broad * elevation_band + (1 | Mountain_range), data = threat_props)
-summary(model_bandwise)

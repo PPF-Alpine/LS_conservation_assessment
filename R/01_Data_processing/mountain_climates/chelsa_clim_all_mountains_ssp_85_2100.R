@@ -199,7 +199,3 @@ ggsave(output_path,
        dpi = 300,               # high-quality output
        device = "jpeg")
 
-
-# improvements:
-# - add densities to top of the plots
-# - add anotations of the climate shifts D value to each plot

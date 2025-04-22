@@ -68,13 +68,16 @@ classification_code_description <- bind_rows(threat_classification_codes, stress
 #         Load and prepare species data 
 #----------------------------------------------------------#
 # mammal checklist 
-checklist_mammals <- readxl::read_xlsx(paste0(data_storage_path,"Datasets/species_assessment/checklists/alpine_mammal_database.xlsx"))
+checklist_mammals <- readxl::read_xlsx(paste0(data_storage_path,"Datasets/species_assessment/checklists/alpine_mammal_database.xlsx"))|>
+  mutate(tax_group = "mammals")
 
 # birds checklist 
-checklist_birds <- readxl::read_xlsx(paste0(data_storage_path,"Datasets/species_assessment/checklists/alpine_bird_database.xlsx"))
+checklist_birds <- readxl::read_xlsx(paste0(data_storage_path,"Datasets/species_assessment/checklists/alpine_bird_database.xlsx"))|>
+  mutate(tax_group = "birds")
 
 # reptiles checklist 
-checklist_reptiles <- readxl::read_xlsx(paste0(data_storage_path,"Datasets/species_assessment/checklists/alpine_reptile_database.xlsx"))
+checklist_reptiles <- readxl::read_xlsx(paste0(data_storage_path,"Datasets/species_assessment/checklists/alpine_reptile_database.xlsx"))|>
+  mutate(tax_group = "reptiles")
 
 checklist <- bind_rows(checklist_mammals,checklist_reptiles,checklist_birds)
 
@@ -94,7 +97,7 @@ Treeline_Elevations <- readxl::read_excel(file.path(data_storage_path, "Datasets
 
 # filter alpine species
 checklist_reduced <-checklist|>
-  select(source,sciname,Mountain_range,min_elevation,max_elevation,mean_treeline)|>
+  select(tax_group,source,sciname,Mountain_range,min_elevation,max_elevation,mean_treeline)|>
   left_join(Treeline_Elevations,by="Mountain_range")|>
   filter(max_elevation >= mean_treeline)|>
   mutate(range_size = max_elevation - min_elevation)|>
@@ -105,7 +108,7 @@ checklist_reduced <-checklist|>
 #----------------------------------------------------------#
 
 threats_stresses_species <- checklist_reduced|>
-  select(source,sciname,Mountain_range,min_elevation,max_elevation,range_size,mid_elevation,mean_treeline)|>
+  select(tax_group,source,sciname,Mountain_range,min_elevation,max_elevation,range_size,mid_elevation,mean_treeline)|>
   left_join(assessment_threats_complete,by="sciname")
 
 
