@@ -27,6 +27,9 @@ luc_summary_ssp5_85 <- read_csv(file.path(data_storage_path, "Outputs/land_use_c
 luc_summary_ssp1_26 <- read_csv(file.path(data_storage_path, "Outputs/land_use_change/all_mountains_luc_summary_ssp1_26_20250421.csv")) |>
   mutate(scenario = "SSP5-8.5_2100")
 
+luc_summary_current <- read_csv(file.path(data_storage_path, "Outputs/land_use_change/all_mountains_luc_summary_current_20250422.csv")) |>
+  mutate(scenario = "baseline")
+
 world <- ne_countries(scale = "medium", returnclass = "sf") %>%
   filter(admin != "Antarctica")
 #----------------------------------------------------------#
@@ -41,8 +44,15 @@ map_data_26 <- luc_summary_ssp1_26|>
   select(Mntn_rn,sum_luc)|>
   distinct()
 
+map_data_current <- luc_summary_current|>
+  select(Mntn_rn,sum_luc)|>
+  distinct()
+
 mountain_data <- mountain_shapes %>%
   left_join(map_data_85, by = c("MapName" = "Mntn_rn"))
+
+mountain_data_current <- mountain_shapes %>%
+  left_join(map_data_current, by = c("MapName" = "Mntn_rn"))
 
 mountain_data_26 <- mountain_shapes %>%
   left_join(map_data_26, by = c("MapName" = "Mntn_rn"))
@@ -66,8 +76,16 @@ luc_map_26 <- ggplot(mountain_data_26) +
   theme_void() +
   labs(fill = "Land Use Sum")
 
+luc_map_current <- ggplot(mountain_data_current) +
+  geom_sf(data = world, fill = "grey95", color = "grey95") +
+  geom_sf(aes(fill = sum_luc, color = sum_luc), size = 0.1) +
+  scale_fill_viridis_c(option = "plasma", limits = c(0, 1), na.value = "lightgrey") +
+  scale_color_viridis_c(option = "plasma", limits = c(0, 1), na.value = "lightgrey", guide = "none") +
+  theme_void() +
+  labs(fill = "Land Use Sum")
+
 x11()
-plot(luc_map_26)
+plot(luc_map_current)
 #----------------------------------------------------------#
 #   save the maps
 #----------------------------------------------------------#
@@ -85,3 +103,10 @@ plot_path <- paste0(data_storage_path, "Outputs/Figures/land_use_change/luc_ssp1
 
 # Save last plot as PNG
 ggsave(filename = plot_path, plot=luc_map_26,width = 10, height = 6, dpi = 300)
+
+# Define file path for PNG
+plot_path <- paste0(data_storage_path, "Outputs/Figures/land_use_change/luc_baseline_", today, ".jpeg")
+
+# Save last plot as PNG
+ggsave(filename = plot_path, plot=luc_map_current,width = 10, height = 6, dpi = 300)
+

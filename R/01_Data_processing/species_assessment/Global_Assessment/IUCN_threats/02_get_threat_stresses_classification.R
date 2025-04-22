@@ -104,11 +104,36 @@ checklist_reduced <-checklist|>
   mutate(mid_elevation = (max_elevation + min_elevation)/2)
 
 #----------------------------------------------------------#
+#        mutate lowland vs generalists vs specialists
+#----------------------------------------------------------#
+
+checklist_reduced <- checklist_reduced |>
+  group_by(Mountain_range) |>
+  mutate(
+    alpine_category = case_when(
+      
+      
+      # Specialists: entirely above the treeline
+      max_elevation >= mean_treeline & min_elevation >= mean_treeline ~ "alpine specialists",
+      
+      # Montane: entirely below treeline and above a lower elevation threshold,
+      # but NOT specialists (they’re already handled above)
+      max_elevation >= mean_treeline & min_elevation >= Mean_elevation_6_degree ~ "alpine montane",
+      
+      # Generalists:  across the treeline
+      max_elevation >= mean_treeline & min_elevation <= mean_treeline ~ "alpine generalists",
+      
+      TRUE ~ "Other"
+    )
+  )
+
+
+#----------------------------------------------------------#
 #         left join assessments with species
 #----------------------------------------------------------#
 
 threats_stresses_species <- checklist_reduced|>
-  select(tax_group,source,sciname,Mountain_range,min_elevation,max_elevation,range_size,mid_elevation,mean_treeline)|>
+  select(tax_group,source,sciname,Mountain_range,min_elevation,max_elevation,range_size,mid_elevation,alpine_category,mean_treeline)|>
   left_join(assessment_threats_complete,by="sciname")
 
 
@@ -126,7 +151,8 @@ threats_stresses_species <- threats_stresses_species|>
            lapply(function(x) str_extract(x, "^\\d+\\.\\d+")) |>   # Extract first two levels (e.g., 2.3)
            lapply(unique) |>                                       # Keep unique values
            sapply(paste, collapse = "; ")                          # Collapse back into one string
-  )
+  )|>
+  mutate(red_list_code = coalesce(red_list_code, "not assessed"))
 
 
 #----------------------------------------------------------#

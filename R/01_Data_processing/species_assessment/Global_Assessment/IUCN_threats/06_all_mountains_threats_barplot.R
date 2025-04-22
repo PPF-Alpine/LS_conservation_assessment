@@ -90,15 +90,15 @@ plot_count<-ggplot(threat_props, aes(x = description, y = n, fill = description)
   )
 
 #----------------------------------------------------------#
-#        prep data for count elevational belts --> ‼ need to be done with Lapse RATES 
+#        prep data for count alpine categories
 #----------------------------------------------------------#
 threat_counts_elev <- threats_long |>
-  group_by(elevation_band, threats_broad) |>
+  group_by(alpine_category, threats_broad) |>
   summarise(n = n(), .groups = "drop")
 
 
 threat_props_elev <- threat_counts_elev |>
-  group_by(elevation_band) |>
+  group_by(alpine_category) |>
   mutate(prop = n / sum(n)) |>
   ungroup()
 
@@ -107,9 +107,28 @@ threat_props_elev <- threat_props_elev |>
   left_join(classification_code_description, by = c("threats_broad" = "code"))
 
 # actual number for each elevation belt
-plot_elev<-ggplot(threat_props_elev, aes(x = description, y = prop, fill = description)) +
+plot_elev_prop<-ggplot(threat_props_elev, aes(x = description, y = prop, fill = description)) +
   geom_bar(stat = "identity", position = "dodge") +
-  facet_wrap(~ elevation_band) +
+  facet_wrap(~ alpine_category) +
+  scale_fill_viridis_d(option = "C", guide = "none") +  # Hide legend if redundant
+  labs(
+    x = NULL,
+    y = "threat proportion %"
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold"),
+    panel.spacing = unit(1, "lines")
+  )
+
+x11()
+plot(plot_elev)
+
+# actual number for each elevation belt
+plot_elev_count<-ggplot(threat_props_elev, aes(x = description, y = n, fill = description)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ alpine_category) +
   scale_fill_viridis_d(option = "C", guide = "none") +  # Hide legend if redundant
   labs(
     x = NULL,
@@ -123,7 +142,7 @@ plot_elev<-ggplot(threat_props_elev, aes(x = description, y = prop, fill = descr
   )
 
 x11()
-plot(plot_elev)
+plot(plot_elev_count)
 #----------------------------------------------------------#
 #   save the plots
 #----------------------------------------------------------#
@@ -134,3 +153,14 @@ plot_path <- paste0(data_storage_path, "Outputs/Figures/species_assessment/all_m
 # Save last plot as PNG
 ggsave(filename = plot_path, plot=plot_count,width = 12, height = 6, dpi = 300)
 
+# Define file path for PNG
+plot_path <- paste0(data_storage_path, "Outputs/Figures/species_assessment/all_mountains_threats_alp_category_prop", today, ".jpeg")
+
+# Save last plot as PNG
+ggsave(filename = plot_path, plot=plot_elev_prop,width = 10, height = 6, dpi = 300)
+
+# Define file path for PNG
+plot_path <- paste0(data_storage_path, "Outputs/Figures/species_assessment/all_mountains_threats_alp_category_count", today, ".jpeg")
+
+# Save last plot as PNG
+ggsave(filename = plot_path, plot=plot_elev_count,width = 10, height = 6, dpi = 300)

@@ -23,7 +23,7 @@ annual_temp <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/CHELSA_b
 annual_prec <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/CHELSA_bio12_1981-2010_V.2.1.tif"))
 
 
-#######❗ choose one scenario
+# ❗ choose one scenario
 
 # this is for ssp85 2070-2100
 annual_temp_ssp85 <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/CHELSA_bio1_2071-2100_mpi-esm1-2-hr_ssp585_V.2.1.tif"))
@@ -35,13 +35,13 @@ annual_temp_ssp85 <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/CH
 
 annual_prec_ssp85 <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/CHELSA_bio12_2041-2070_mpi-esm1-2-hr_ssp585_V.2.1.tif"))
 
-
+#------------------------------------------------
+# source mountains and alpine
+#----------------------------------------------------------#
 #source the gmba mountains
 mountain_shapes <- sf::st_read(paste(data_storage_path,"Datasets/Mountains/GMBA_Levels/Level_03/GMBA_Inventory_v2.0_Level_03.shp", 
                                      sep = "/"))
 
-mountain_range <- mountain_shapes|>
-  filter(MapName=="Northern Andes")
 
 # source alpine biome
 alpine_shapes <- sf::st_read(paste(data_storage_path,"Datasets/Mountains/Alpine_Biome/alpine_biome.shp", 
@@ -52,26 +52,7 @@ head(alpine_shapes)
 
 
 # Define mountain selection
-mountain_selection <- c("Himalaya", 
-                        "Northern Andes", 
-                        "Central Andes", 
-                        "Central European Highlands", 
-                        "Intermountain West",
-                        #"Hindu Kush", 
-                        "Ethiopian Highlands", 
-                        #"Albertine Rift Mountain",
-                        "South Island",
-                        "North European Highlands",
-                        "Tibetan Plateau",
-                        #"Great Escarpment",
-                        #"Malay Archipelago",
-                        "Caucasus Mountains",
-                        "East European Highlands",
-                        "Rocky Mountains",
-                        #"Pacific Coast Ranges",
-                        "Eastern Rift mountains",
-                        "Mexican Highlands")
-
+mountain_selection <- alpine_shapes$Mntn_rn |> unique() |> sort()
 
 #------------------------------------------------
 # loop through mountain ranges
@@ -79,36 +60,31 @@ mountain_selection <- c("Himalaya",
 # Store all plots
 climate_plots <- list()
 climate_shifts <- data.frame()
+climate_combined_all <- data.frame()
 
-# Loop over each mountain range
 for (mnt in mountain_selection) {
   cat("Processing:", mnt, "\n")
   
-  # Subset polygon
   mountain_range <- alpine_shapes |>
     filter(Mntn_rn == mnt)
   
-  # Crop and mask rasters
   temp_mountain <- mask(crop(annual_temp, mountain_range), mountain_range)
   prec_mountain <- mask(crop(annual_prec, mountain_range), mountain_range)
   temp_mountain_future <- mask(crop(annual_temp_ssp85, mountain_range), mountain_range)
   prec_mountain_future <- mask(crop(annual_prec_ssp85, mountain_range), mountain_range)
   
-  # Skip if no data
   if (is.null(temp_mountain) || is.null(prec_mountain) ||
       is.null(temp_mountain_future) || is.null(prec_mountain_future)) {
     next
   }
   
-  # Present stack
   climate_stack <- c(temp_mountain, prec_mountain)
   names(climate_stack) <- c("temperature", "precipitation")
   climate_df <- as.data.frame(climate_stack, na.rm = TRUE)
-  if (nrow(climate_df) < 100) next  # skip if not enough data
+  if (nrow(climate_df) < 100) next
   climate_df <- climate_df[sample(nrow(climate_df), min(10000, nrow(climate_df))), ]
   climate_df$period <- "Present"
   
-  # Future stack
   climate_stack_future <- c(temp_mountain_future, prec_mountain_future)
   names(climate_stack_future) <- c("temperature", "precipitation")
   climate_df_future <- as.data.frame(climate_stack_future, na.rm = TRUE)
@@ -116,10 +92,18 @@ for (mnt in mountain_selection) {
   climate_df_future <- climate_df_future[sample(nrow(climate_df_future), min(10000, nrow(climate_df_future))), ]
   climate_df_future$period <- "Future"
   
-  # Combine
-  climate_combined <- rbind(climate_df, climate_df_future)
+  # Combine and add mountain name
+  climate_combined <- bind_rows(climate_df, climate_df_future) |>
+    mutate(
+      Mountain = mnt,
+      temperature_z = scale(temperature)[, 1],
+      precipitation_z = scale(precipitation)[, 1]
+    )
   
-  # Centroids
+  # Save full combined df with z-scores
+  climate_combined_all <- bind_rows(climate_combined_all, climate_combined)
+  
+  # Centroids (original scale)
   centroids <- climate_combined |>
     group_by(period) |>
     summarise(
@@ -127,19 +111,28 @@ for (mnt in mountain_selection) {
       mean_prec = mean(precipitation, na.rm = TRUE)
     )
   
-  # Arrow df
-  arrow_df <- data.frame(
-    x = centroids$mean_temp[centroids$period == "Present"],
-    y = centroids$mean_prec[centroids$period == "Present"],
-    xend = centroids$mean_temp[centroids$period == "Future"],
-    yend = centroids$mean_prec[centroids$period == "Future"]
-  )
+  # Centroids (z-score scale)
+  centroids_z <- climate_combined |>
+    group_by(period) |>
+    summarise(
+      mean_temp_z = mean(temperature_z, na.rm = TRUE),
+      mean_prec_z = mean(precipitation_z, na.rm = TRUE)
+    )
   
-  # Euclidean shift
-  D <- sqrt((arrow_df$xend - arrow_df$x)^2 + (arrow_df$yend - arrow_df$y)^2)
+  # Euclidean distance in original space
+  D <- sqrt((centroids$mean_temp[2] - centroids$mean_temp[1])^2 +
+              (centroids$mean_prec[2] - centroids$mean_prec[1])^2)
   
-  # Store distance
-  climate_shifts <- rbind(climate_shifts, data.frame(Mountain = mnt, ClimateShift = D))
+  # Euclidean distance in standardized (z-score) space
+  D_z <- sqrt((centroids_z$mean_temp_z[2] - centroids_z$mean_temp_z[1])^2 +
+                (centroids_z$mean_prec_z[2] - centroids_z$mean_prec_z[1])^2)
+  
+  # Store shift metrics
+  climate_shifts <- bind_rows(climate_shifts, tibble(
+    Mountain = mnt,
+    ClimateShift = D,
+    ClimateShift_z = D_z
+  ))
   
   # Plot
   p <- ggplot(climate_combined, aes(x = temperature, y = precipitation)) +
@@ -147,15 +140,15 @@ for (mnt in mountain_selection) {
                     alpha = 0.4, color = NA) +
     scale_fill_manual(values = c("Present" = "#1f78b4", "Future" = "#e31a1c")) +
     
-    geom_segment(data = arrow_df,
-                 aes(x = x, y = y, xend = xend, yend = yend),
+    geom_segment(data = centroids,
+                 aes(x = mean_temp[1], y = mean_prec[1],
+                     xend = mean_temp[2], yend = mean_prec[2]),
                  arrow = arrow(length = unit(0.3, "cm")), color = "black", size = 1) +
     
     geom_point(data = centroids, aes(x = mean_temp, y = mean_prec, color = period),
                size = 1, shape = 21, fill = "white", stroke = 1) +
     scale_color_manual(values = c("Present" = "#1f78b4", "Future" = "#e31a1c")) +
     
-    #  marginal densities 
     geom_xsidedensity(aes(y = ..density.., fill = period), alpha = 0.5, position = "identity") +
     geom_ysidedensity(aes(x = ..density.., fill = period), alpha = 0.5, position = "identity") +
     
@@ -170,32 +163,64 @@ for (mnt in mountain_selection) {
     scale_y_continuous(limits = c(0, 7000)) +
     coord_fixed(ratio = 1/200) +
     theme_minimal() +
-    theme(ggside.panel.scale = 0.2)  # controls the side plot size
+    theme(ggside.panel.scale = 0.2)
   
   climate_plots[[mnt]] <- p
 }
 
+
+
 #----------------------------------------------------------#
 #         safe plots 
 #----------------------------------------------------------#
-wrap_plots(climate_plots, guides = "collect") +
-  plot_annotation(
-    title = "Climate space shift in alpine areas: Present vs SSP8.5 (2070–2100)"
-  ) &
-  theme(
-    legend.position = "bottom",
-    plot.title = element_text(size = 12, face = "bold", hjust = 0.5)
+# Split into chunks of 16 plots
+plots_per_page <- 16
+plot_chunks <- split(climate_plots, ceiling(seq_along(climate_plots) / plots_per_page))
+
+# Create folder if not exists
+output_folder <- file.path(data_storage_path, "Outputs/Figures/mountain_climates")
+dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
+
+# Date for filename
+today <- format(Sys.Date(), "%Y%m%d")
+
+# Loop and save each chunk
+for (i in seq_along(plot_chunks)) {
+  page_plots <- plot_chunks[[i]]
+  
+  # Remove legend from each individual plot
+  page_plots_nolegend <- lapply(page_plots, function(p) p + theme(legend.position = "none"))
+  
+  # Combine and annotate
+  p <- wrap_plots(page_plots_nolegend, ncol = 4) +
+    plot_annotation(
+      title = paste("Climate space shift in alpine areas (Page", i, ")"),
+      theme = theme(
+        plot.title = element_text(size = 12, face = "bold", hjust = 0.5)
+      )
+    )
+  
+  # Save
+  ggsave(
+    filename = file.path(output_folder, paste0("climate_space_shift_page_", i, "_", today, ".jpg")),
+    plot = p,
+    width = 14, height = 10,
+    dpi = 300, device = "jpeg"
   )
+}
+
+#---------------------------------------------------------------#
+# write to csv --
+#----------------------------------------------------------------#
 
 today <- format(Sys.Date(), "%Y%m%d")
 
 # Define file path
-output_path <- paste0(data_storage_path, "Outputs/Figures/mountain_climates/climate_space_shift_ssp85_2100_", today, ".jpg")
+output_path <- paste0(data_storage_path, "Outputs/mountain_climates/all_mountains_climate_shifts_ssp855_2100_", today, ".csv")
 
-# Save the plot
-ggsave(output_path,
-       plot = last_plot(),      # or assign your full plot to a variable and use it here
-       width = 14, height = 10, # adjust size as needed
-       dpi = 300,               # high-quality output
-       device = "jpeg")
+write.csv(climate_shifts,output_path)
 
+# Define file path
+output_path <- paste0(data_storage_path, "Outputs/mountain_climates/climate_combined_all_ssp855_2100_", today, ".csv")
+
+write.csv(climate_combined_all,output_path)
