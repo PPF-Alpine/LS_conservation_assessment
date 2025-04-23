@@ -13,8 +13,8 @@ plot_threat_heatmap <- function(mountain_name) {
   
   # which are the greatest threats at each elevation belt? 
   threats_props <- threats_long |>
-    count(elevation_band, threats_broad) |>
-    group_by(elevation_band) |>
+    count(alpine_category, threats_broad) |>
+    group_by(alpine_category) |>
     mutate(prop = n / sum(n)) |>
     ungroup() |>
     mutate(
@@ -23,14 +23,18 @@ plot_threat_heatmap <- function(mountain_name) {
     left_join(classification_code_description, by = c("threats_broad" = "code"))
   
   # Plot
-  ggplot(threats_props, aes(x = elevation_band, y = description, fill = prop)) +
+  ggplot(threats_props, aes(x = alpine_category, y = description, fill = prop)) +
     geom_tile(color = "white") +
-    scale_fill_viridis_c(option = "magma", name = "Proportion", labels = percent) +
+    scale_fill_viridis_c(option = "inferno", name = "Proportion", labels = percent) +
     labs(
       title = mountain_name,
-      x = "Mid Elevation Band (m)",
+      x = NULL,
       y = NULL
     ) +
-    theme_minimal(base_size = 10) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    theme_minimal(base_size = 12) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.key.height = unit(0.3, "cm"),
+          legend.key.width = unit(0.3, "cm"),
+          legend.text = element_text(size = 8),
+          legend.title = element_text(size = 9))
 }

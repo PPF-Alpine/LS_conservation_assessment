@@ -16,7 +16,8 @@ source(here::here("R/00_Config_file.R"))
 #        read in the threats
 #----------------------------------------------------------#
 
-threats_stresses_species <- read.csv(paste0(data_storage_path,"Outputs/IUCN_assessment_lists/threats_stresses_species.csv"))
+threats_stresses_species <- read.csv(paste0(data_storage_path,"Outputs/IUCN_assessment_lists/threats_stresses_species.csv"))|>
+  mutate()
 
 # the description dataframe for the classification codes by IUCN
 classification_code_description <- read_delim(
@@ -99,8 +100,9 @@ threat_plots <- compact(threat_plots)
 #----------------------------------------------------------#
 #     safe plot 
 #----------------------------------------------------------#
+x11()
+wrap_plots(threat_plots, ncol = 4)
 
-wrap_plots(threat_plots,ncol=3) 
 
 today <- format(Sys.Date(), "%Y%m%d")
 
@@ -110,8 +112,8 @@ output_path <- paste0(data_storage_path, "Outputs/Figures/species_assessment/hea
 # Save the plot
 ggsave(output_path,
        plot = last_plot(),      # or assign your full plot to a variable and use it here
-       width = 18, height = 18, # adjust size as needed
-       dpi = 300,               # high-quality output
+       width = 28, height = 20, # adjust size as needed
+       dpi = 500,               # high-quality output
        device = "jpeg")
 
 
