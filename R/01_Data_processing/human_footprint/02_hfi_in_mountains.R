@@ -22,7 +22,7 @@ mountain_shapes <- sf::st_read(paste(data_storage_path,"Datasets/Mountains/GMBA_
                                      sep = "/"))
 
 
-hfi_mountains <- rast(paste0(data_storage_path, "Datasets/human_footprint/hfi_mountains.tif"))
+hfi_mountains <- rast(paste0(data_storage_path, "Datasets/human_footprint/HFI/hfi_mountains.tif"))
 
 
 # Define mountain selection
