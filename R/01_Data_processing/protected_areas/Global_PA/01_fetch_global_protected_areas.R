@@ -10,10 +10,17 @@ library(tidyverse)
 library(sf)
 library(chirps)
 library(leaflet)
-
+library(prepr)
 
 if (!require(remotes)) install.packages("remotes")
+
 remotes::install_github("prioritizr/prepr")
+remotes::install_github("prioritizr/prepr", lib = "~/Desktop/GitHub/LS_conservation_assessment/renv/library/R-4.3/x86_64-w64-mingw32")
+
+remotes::install_version("RcppCGAL", version = "5.6.4")
+
+remotes::install_github("dickoa/prepr")
+install.packages("rlist")
 
 # Load configuration file
 source(here::here("R/00_Config_file.R"))
@@ -41,7 +48,9 @@ mountain_shapes_selected <- mountain_shapes|>
 #----------------------------------------------------------#
 
 mountain_range <- mountain_shapes_selected|>
-  filter(MapName == "North European Highlands")
+  filter(MapName == "Himalaya")
+
+mountain_name <- mountain_range$MapName
 
 # in wdpa functions PAs are downloaded via ISO
 
@@ -80,12 +89,12 @@ intersected_geom <- clean_PAs |>
   dplyr::filter(sf::st_intersects(geometry, mountain_range, sparse = FALSE)) |>
   sf::st_union()
 
-clean_PAs_himalaya <- sf::st_sf(geometry = intersected_geom)
+clean_PAs_mountain <- sf::st_sf(geometry = intersected_geom)
 
 x11()
-plot(clean_PAs_himalaya)
+plot(clean_PAs_mountain)
 
-clean_PAs_himalaya <- st_transform(clean_PAs_himalaya, 4326)
+clean_PAs_mountain <- st_transform(clean_PAs_mountain, 4326)
 mountain_range <- st_transform(mountain_range, 4326)
 
 #----------------------------------------------------------#
@@ -103,14 +112,14 @@ PA_metadata <- clean_PAs |>
 #----------------------------------------------------------#
 # Save as a GeoPackage
 st_write(
-  clean_PAs_himalaya,
-  paste0(data_storage_path, "Datasets/protected_areas/all_mountains/clean_PAs_North_European_Highlands.shp"),
+  clean_PAs_mountain,
+  paste0(data_storage_path, "Datasets/protected_areas/all_mountains/clean_PAs_",mountain_name,".shp"),
   delete_layer = TRUE,overwrite=FALSE
 )
 
 
 # Define file path
-output_path <- paste0(data_storage_path, "Outputs/protected_areas/metadata_PA/PA_metadata_Central_Andes.csv")
+output_path <- paste0(data_storage_path, "Outputs/protected_areas/metadata_PA/PA_metadata_",mountain_name,".csv")
 write.csv(PA_metadata,output_path)
 
 

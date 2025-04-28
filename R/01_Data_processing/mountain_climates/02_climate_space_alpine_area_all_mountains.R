@@ -3,8 +3,9 @@ library(terra)
 library(sf)
 library(dplyr)
 library(ggplot2)
-
+library(magrittr)
 # Load configuration
+
 source(here::here("R/00_Config_file.R"))
 
 # Load data
@@ -16,14 +17,13 @@ annual_prec_ssp85 <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/av
 
 alpine_shapes <- sf::st_read(paste(data_storage_path,"Datasets/Mountains/Alpine_Biome/alpine_biome.shp", sep = "/"))
 
-# Define your selection
-mountain_selection <- c(
-  "Himalaya", "Northern Andes", "Central Andes", "Central European Highlands", 
-  "Intermountain West", "Hindu Kush", "Ethiopian Highlands", "Albertine Rift Mountain",
-  "South Island", "North European Highlands", "Tibetan Plateau", "Great Escarpment",
-  "Malay Archipelago", "Caucasus Mountains", "East European Highlands",
-  "Rocky Mountains", "Pacific Coast Ranges", "Eastern Rift mountains", "Mexican Highlands"
-)
+# get unique mountains
+mountain_selection <- alpine_shapes$Mntn_rn %>%
+  unique() %>%
+  sort() %>%
+  gsub("/", "_", .)  # Only replace slashes with underscores
+
+
 
 # Initialize an empty dataframe to collect % loss results
 loss_results <- data.frame(Mountain = character(), Percent_Lost = numeric(), stringsAsFactors = FALSE)
@@ -115,9 +115,11 @@ for (mountain_name in mountain_selection) {
 #----------------------------------------------------------#
 
 # Sort by most loss
-loss_results <- loss_results |> arrange(desc(Percent_Lost))
+loss_results <- loss_results |> 
+  arrange(desc(Percent_Lost))
 
 # Plot
+x11()
 ggplot(loss_results, aes(x = reorder(Mountain, -Percent_Lost), y = Percent_Lost)) +
   geom_bar(stat = "identity", fill = "firebrick") +
   coord_flip() +
@@ -137,6 +139,6 @@ ggplot(loss_results, aes(x = reorder(Mountain, -Percent_Lost), y = Percent_Lost)
 today <- format(Sys.Date(), "%Y%m%d")
 
 # Define file path
-output_path <- paste0(data_storage_path, "Outputs/mountain_climates/future_alpine_area/perc_loss_85_70", today, ".csv")
+output_path <- paste0(data_storage_path, "Outputs/mountain_climates/future_alpine_area/all_mountains_perc_loss_85_70_", today, ".csv")
 
 write.csv(loss_results,output_path)

@@ -26,7 +26,7 @@ alpine_shapes <- sf::st_read(paste(data_storage_path,"Datasets/Mountains/Alpine_
                                    sep = "/"))
 # select a mountain range
 mountain_range <- alpine_shapes|>
-  filter(Mntn_rn =="Northern Andes")
+  filter(Mntn_rn =="Central European Highlands")
 
 mountain_range_name <- mountain_range$Mntn_rn
 

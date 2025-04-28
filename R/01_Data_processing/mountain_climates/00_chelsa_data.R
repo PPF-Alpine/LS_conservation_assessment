@@ -22,7 +22,6 @@ download_dataset(
   bio_variables = c("bio01", "bio12")
 )
 
-
 # there is no time slice available for CHELS
 future_slice_2055 <- region_slice(
   time_ce = 2055,
