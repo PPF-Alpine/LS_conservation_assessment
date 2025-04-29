@@ -12,15 +12,14 @@ library(chirps)
 library(leaflet)
 library(prepr)
 
-if (!require(remotes)) install.packages("remotes")
+#if (!require(remotes)) install.packages("remotes")
 
-remotes::install_github("prioritizr/prepr")
-remotes::install_github("prioritizr/prepr", lib = "~/Desktop/GitHub/LS_conservation_assessment/renv/library/R-4.3/x86_64-w64-mingw32")
+#temp_lib <- "C:/Users/losch5089/Rlibs"
+#dir.create(temp_lib, recursive = TRUE, showWarnings = FALSE)
+#remotes::install_github("prioritizr/prepr", lib = temp_lib)
 
-remotes::install_version("RcppCGAL", version = "5.6.4")
+library(prepr, lib.loc = temp_lib)
 
-remotes::install_github("dickoa/prepr")
-install.packages("rlist")
 
 # Load configuration file
 source(here::here("R/00_Config_file.R"))
@@ -48,7 +47,7 @@ mountain_shapes_selected <- mountain_shapes|>
 #----------------------------------------------------------#
 
 mountain_range <- mountain_shapes_selected|>
-  filter(MapName == "Himalaya")
+  filter(MapName == "North European Highlands")
 
 mountain_name <- mountain_range$MapName
 
@@ -84,6 +83,48 @@ if (!sf::st_crs(clean_PAs) == sf::st_crs(mountain_range)) {
   mountain_range <- sf::st_transform(mountain_range, sf::st_crs(clean_PAs))
 }
 
+# intersect with mountain range for each category
+intersected_PAs <- clean_PAs |>
+  filter(st_intersects(geometry, mountain_range, sparse = FALSE))
+
+#----------------------------------------------------------#
+#    get all the metadata
+#----------------------------------------------------------#
+
+PA_metadata <- intersected_PAs |>
+  select(WDPA_PID, WDPAID, NAME, DESIG_ENG, DESIG_TYPE, IUCN_CAT, GOV_TYPE, ISO3) |>
+  sf::st_drop_geometry()
+
+
+#----------------------------------------------------------#
+#     divide into IUCN categories
+#----------------------------------------------------------#
+
+# divide shapes 
+IUCN_I_IV <- intersected_PAs |>
+  filter(IUCN_CA %in% c("I", "Ia", "Ib", "II", "III", "IV")) |>
+  mutate(category = "I_IV")
+
+IUCN_V_VI <- intersected_PAs |>
+  filter(IUCN_CA %in% c("V", "VI")) |>
+  mutate(category = "V_VI")
+
+IUCN_NA <- intersected_PAs |>
+  filter(IUCN_CA %in% c("Not Applicable", "Not Reported")) |>
+  mutate(category = "NA")
+
+# Combine all categories into one data frame
+combined_PAs <- bind_rows(IUCN_I_IV, IUCN_V_VI, IUCN_NA)
+
+
+# dissolve geometries within each category
+final_multipolygons <- intersected_PAs |>
+  group_by(category) |>
+  summarize(geometry = st_union(geometry), .groups = "drop")
+
+
+
+#### old 
 # intersect the mountain range
 intersected_geom <- clean_PAs |>
   dplyr::filter(sf::st_intersects(geometry, mountain_range, sparse = FALSE)) |>
@@ -91,24 +132,17 @@ intersected_geom <- clean_PAs |>
 
 clean_PAs_mountain <- sf::st_sf(geometry = intersected_geom)
 
+
 x11()
 plot(clean_PAs_mountain)
 
 clean_PAs_mountain <- st_transform(clean_PAs_mountain, 4326)
 mountain_range <- st_transform(mountain_range, 4326)
 
-#----------------------------------------------------------#
-#    get the metadata
-#----------------------------------------------------------#
 
-PA_metadata <- clean_PAs |>
-  select(WDPA_PID, WDPAID, NAME, DESIG_ENG, DESIG_TYPE, IUCN_CAT, GOV_TYPE, ISO3) |>
-  sf::st_drop_geometry()
-
-# create one shapefile with uncategorized IUCN PA and one without
 
 #----------------------------------------------------------#
-#    save as geopackage
+#    save as shp
 #----------------------------------------------------------#
 # Save as a GeoPackage
 st_write(
@@ -121,9 +155,6 @@ st_write(
 # Define file path
 output_path <- paste0(data_storage_path, "Outputs/protected_areas/metadata_PA/PA_metadata_",mountain_name,".csv")
 write.csv(PA_metadata,output_path)
-
-
-
 
 
 
