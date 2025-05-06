@@ -10,11 +10,8 @@ source(here::here("R/00_Config_file.R"))
 
 # Load data
 annual_temp <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/raw_download/CHELSA_2.1_0.5m_bio01_v1.0.0_vsi.vrt"))
+annual_prec <- rast(paste0(data_storage_path, "Datasets/Mountains/Chelsa/raw_download/CHELSA_2.1_0.5m_bio12_v1.0.0_vsi.vrt"))
 
-
-annual_prec <- rast(paste0(data_storage_path, "Datasets/Mountains/Chelsa/raw_download/CHELSA_2.1_0.5m_bio01_v1.0.0_vsi.vrt"))
-x11()
-plot(annual_prec_future)
 
 # load future data
 annual_temp_future <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/time_slices_2055/temp_2055_585.tif"))
@@ -78,9 +75,10 @@ for (mountain_name in mountain_selection) {
     (prec_mountain_future >= prec_range[1]) & (prec_mountain_future <= prec_range[2])
   
   # Calculate % lost
-  current_pixels <- sum(values(current_alpine_area), na.rm = TRUE)
-  future_pixels <- sum(values(future_alpine_area), na.rm = TRUE)
+  current_pixels <- global(current_alpine_area, "sum", na.rm = TRUE)[1,1] # terrra::global is safer than sum
+  future_pixels <- global(future_alpine_area, "sum", na.rm = TRUE)[1,1]
   
+  # get the percentages
   percent_retained <- (future_pixels / current_pixels) * 100
   percent_lost <- 100 - percent_retained
   

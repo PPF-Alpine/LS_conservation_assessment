@@ -24,15 +24,13 @@ annual_prec_ssp85 <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/av
 #       ‼️TIMESTAMPS  load chelsa data and mountain range
 #----------------------------------------------------------#
 # Load data
-annual_temp <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/raw_download/CHELSA_2.1_0.5m_bio01_v1.0.0_vsi.vrt"))
-annual_prec <- rast(paste0(data_storage_path, "Datasets/Mountains/Chelsa/raw_download/CHELSA_2.1_0.5m_bio12_v1.0.0_vsi.vrt"))
+annual_temp_ts <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/raw_download/CHELSA_2.1_0.5m_bio01_v1.0.0_vsi.vrt"))
+annual_prec_ts <- rast(paste0(data_storage_path, "Datasets/Mountains/Chelsa/raw_download/CHELSA_2.1_0.5m_bio01_v1.0.0_vsi.vrt"))
 
 
 # load future data
-annual_temp_ssp85 <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/time_slices_2055/temp_2055_585.tif"))
-annual_prec_ssp85 <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/time_slices_2055/prec_2055_585.tif"))
-
-
+annual_temp_ssp85_ts <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/time_slices_2055/temp_2055_585.tif"))
+annual_prec_ssp85_ts <- rast(paste0(data_storage_path,"Datasets/Mountains/Chelsa/time_slices_2055/prec_2055_585.tif"))
 
 
 
@@ -69,7 +67,8 @@ temp_mountain_future <- mask(temp_mountain_crop_future, mountain_range)
 #prec future
 prec_mountain_crop_future <- crop(annual_prec_ssp85, mountain_range)
 prec_mountain_future <- mask(prec_mountain_crop_future, mountain_range)
-
+x11()
+plot(temp_mountain_future)
 #----------------------------------------------------------#
 #       stack temp and prec rasters 
 #----------------------------------------------------------#
@@ -99,7 +98,7 @@ future_alpine_area <- (temp_mountain_future >= temp_range[1]) & (temp_mountain_f
 
 # true shows where alpine area will persist and false where not 
 x11()
-plot(future_alpine_area)
+plot(current_alpine_area)
 
 #----------------------------------------------------------------------#
 #  calculate how much clim space is lost
@@ -129,8 +128,8 @@ future_alpine_df <- as.data.frame(future_alpine_area_numeric, xy = TRUE)
 
 # After converting raster to dataframe
 future_alpine_df$cells <- factor(future_alpine_df$`CHELSA_bio1_2041-2070_mpi-esm1-2-hr_ssp585_V.2.1`,
-                                  levels = c(1, 0),
-                                  labels = c("retained", "lost"))
+                                 levels = c(1, 0),
+                                 labels = c("retained", "lost"))
 
 
 
