@@ -5,6 +5,7 @@ library(here)
 library(tidyverse)
 library(sf)
 library(ggplot2)
+library(viridis)
 
 
 source(here::here("R/00_Config_file.R"))
@@ -29,16 +30,12 @@ PA_coverage_df <- csv_files |>
 # barplot the data 
 #-------------------------------------#
 
-# 
-
-library(ggplot2)
-library(viridis)
 
 plot <- ggplot(PA_coverage_df, aes(x = Mountain_range, y = percent_protected, fill = IUCN_ct)) +
   geom_col(position = position_dodge(width = 0.6)) +
   scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.05))) +
   scale_fill_viridis_d(option = "inferno", name = "IUCN category",direction=-1) +
-  facet_wrap(~ Range) +
+  facet_grid(. ~ Range, scales = "free_x", space = "free_x") + 
   labs(
     x = NULL,
     y = "% area protected"
@@ -65,7 +62,7 @@ today <- format(Sys.Date(), "%Y%m%d")
 plot_path <- paste0(data_storage_path, "Outputs/protected_areas/PA_coverage", today, ".jpeg")
 
 # Save last plot as PNG
-ggsave(filename = plot_path, plot=plot,width = 10, height = 6, dpi = 300)
+ggsave(filename = plot_path, plot=plot,width = 12, height = 6, dpi = 300)
 
 
 

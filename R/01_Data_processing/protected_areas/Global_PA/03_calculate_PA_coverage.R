@@ -9,11 +9,9 @@ library(here)
 #install.packages("wdpar")
 #webdriver::install_phantomjs()
 library(terra)
-library(elevatr)
 library(tidyverse)
 library(sf)
 library(lwgeom)
-library(leaflet)
 
 
 source(here::here("R/00_Config_file.R"))
@@ -21,10 +19,6 @@ source(here::here("R/00_Config_file.R"))
 #----------------------------------------------------------#
 # Load data  -----
 #----------------------------------------------------------#
-
-
-# DEFINE MOUNTAIN RANGE
-mountain_name <- "Himalaya"
 
 # get PAs for mountain ranges with alpine biome
 
@@ -39,9 +33,13 @@ alpine_shapes <- sf::st_read(paste(data_storage_path,"Datasets/Mountains/Alpine_
 mountain_shapes_selected <- mountain_shapes|>
   filter(MapName %in% alpine_shapes$Mntn_rn)
 
+# DEFINE MOUNTAIN RANGE
+mountain_name_read <- "Rocky_Mountains"
+mountain_name <- "Rocky Mountains"
 
+# load PA
 PA_mountain <- sf::st_read(
-  paste0(data_storage_path, "/Datasets/protected_areas/all_mountains/clean_PAs_", mountain_name, ".shp")
+  paste0(data_storage_path, "/Datasets/protected_areas/all_mountains/clean_PAs_", mountain_name_read, ".shp")
 )
 
 
@@ -49,7 +47,6 @@ PA_mountain <- sf::st_read(
 # select and reproject crs ---
 #----------------------------------------------------------#
 
-mountain_name <- "Himalaya"
 
 mountain_range <- mountain_shapes_selected|>
   filter(MapName == mountain_name)
@@ -153,11 +150,9 @@ final_coverage
 # write results
 # ----------------------------
 
-# DEFINE MOUNTAIN RANGE
-mountain_name <- "Himalaya"
 
 # Define file path
-output_path <- paste0(data_storage_path, "Outputs/protected_areas/PA_coverage/PA_coverage_",mountain_name,".csv")
+output_path <- paste0(data_storage_path, "Outputs/protected_areas/PA_coverage/PA_coverage_",mountain_name_read,".csv")
 write.csv(final_coverage,output_path)
 
 
