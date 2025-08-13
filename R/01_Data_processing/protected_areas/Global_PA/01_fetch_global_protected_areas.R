@@ -42,33 +42,14 @@ alpine_shapes <- sf::st_read(paste(data_storage_path,"Datasets/Mountains/Alpine_
 mountain_shapes_selected <- mountain_shapes|>
   filter(MapName %in% alpine_shapes$Mntn_rn)
 
-# Define mountain selection
-mountain_selection <- c(#"Himalaya", 
-                        #"Northern Andes", 
-                        #"Central Andes", 
-                        #"Central European Highlands", 
-                        #"Intermountain West",
-                        "Hindu Kush", 
-                        #"Ethiopian Highlands", 
-                        "Albertine Rift Mountain",
-                        "South Island",
-                        #"Tibetan Plateau",
-                        "Great Escarpment",
-                        "Malay Archipelago",
-                        "Caucasus Mountains",
-                        "East European Highlands",
-                        #"Rocky Mountains",
-                        #"Pacific Coast Ranges",
-                        "Eastern Rift mountains",
-                        "Mexican Highlands")
 #----------------------------------------------------------#
 # individual mountain ranges
 #----------------------------------------------------------#
 
 mountain_range <- mountain_shapes_selected|>
-  filter(MapName == "Caucasus Mountains")
+  filter(MapName == "Pacific Coast Ranges")
 
-mountain_name <- mountain_range$MapName
+mountain_name <- unique(mountain_range$MapName)
 
 # in wdpa functions PAs are downloaded via ISO
 
@@ -76,7 +57,7 @@ mountain_name <- mountain_range$MapName
 countries <- mountain_range$CountryISO
 countries <- strsplit(countries, ",\\s*")[[1]]
 
-countries <- c("ARM","AZE","GEO","RUS","TUR")
+#countries <- c("ARM","AZE","GEO","RUS","TUR")
   
 # Function to fetch WDPA data for a given country and return as an sf object
 fetch_wdpa_country <- function(country_iso) {
@@ -105,7 +86,11 @@ if (!sf::st_crs(clean_PAs) == sf::st_crs(mountain_range)) {
 
 # intersect with mountain range for each category
 intersected_PAs <- clean_PAs |>
-  filter(st_intersects(geometry, mountain_range, sparse = FALSE))
+  filter(sf::st_intersects(geometry, mountain_range, sparse = FALSE))
+
+# previous gave error with intersection. this works..
+intersected_PAs <- clean_PAs |>
+  filter(apply(sf::st_intersects(geometry, mountain_range, sparse = FALSE), 1, any))
 
 #----------------------------------------------------------#
 #    get all the metadata
@@ -162,6 +147,7 @@ mountain_range <- st_transform(mountain_range, 4326)
 # Save as a GeoPackage
 # Replace spaces with underscores
 mountain_name_clean <- gsub(" ", "_", mountain_name)
+#mountain_name_clean <- gsub(" ", "_", mountain_name[1])
 
 # Then use the cleaned name in your st_write
 st_write(
@@ -170,6 +156,7 @@ st_write(
   delete_layer = TRUE,
   overwrite = FALSE
 )
+
 
 # Define file path
 output_path <- paste0(data_storage_path, "Outputs/protected_areas/metadata_PA/PA_metadata_",mountain_name_clean,".csv")
@@ -185,20 +172,21 @@ mountain_selection <- c(#"Himalaya", ✅
   #"Northern Andes", ✅
   #"Central Andes", ✅
   #"Central European Highlands", ✅
-  #"Intermountain West",❗check separately
+  #"Intermountain West", ✅
   #"Hindu Kush", ✅
   #"Ethiopian Highlands", ✅
-  #"Albertine Rift Mountain", # ❗check separately 
+  #"Albertine Rift Mountains", # ✅
   #"South Island", ✅
   #"Tibetan Plateau",❗check separately 
   #"Great Escarpment",✅
   #"Malay Archipelago",✅
-  #"Caucasus Mountains", # ✅ done seperately because ISO XUZ didnt work
+  #"Caucasus Mountains", # ✅ done separately because ISO XUZ didnt work
   #"East European Highlands",✅
-  #"Rocky Mountains",# ❗check separately 
+  #"Rocky Mountains",# ✅ 
   #"Pacific Coast Ranges",# ❗check separately 
   #"Eastern Rift mountains",✅
-  "Mexican Highlands")
+  #"Mexican Highlands"✅
+  )
 
 #  loop
 for (mountain in mountain_selection) {
