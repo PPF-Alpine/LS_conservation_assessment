@@ -38,6 +38,7 @@ lc_data_descr <- readxl::read_excel(paste0(data_storage_path,"Datasets/land_cove
 #----------------------------------------------------------#
 
 # specify sciname 
+# ❗ loop
 
 target_sciname <- "Marmota himalayana"
 
