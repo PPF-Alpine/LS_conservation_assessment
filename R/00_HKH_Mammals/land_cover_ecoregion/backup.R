@@ -38,15 +38,20 @@ species_list <- readxl::read_excel(paste0(data_storage_path,"Datasets/species_li
 
 lc_data_descr <- readxl::read_excel(paste0(data_storage_path,"Datasets/land_cover/lc_data_description.xlsx"))
 
+hkh_boundaries <- sf::st_read(paste(data_storage_path,"Datasets/HKH_boundary/HKH_Boundary.shp", sep = "/"))
+
+
 # ❗ rewrite config file for both datastorage paths
 source(here::here("R/00_Config_file.R"))
 dem <- rast(paste0(data_storage_path, "Datasets/Mountains/DEM/GMTED2010_30.tiff"))
 
 # crop the dem to hkh boundary
 dem_crop <- crop(dem, lc)
+plot(lc)
+dem_crop<-mask(dem_crop,hkh_boundaries)
 plot(dem_crop)
 
-writeRaster(dem_crop, file.path(data_storage_path, "Datasets", "DEM_HKH","DEM_HKH.tif"), overwrite = TRUE)
+terra::writeRaster(dem_crop, file.path(data_storage_path, "Datasets", "DEM_HKH","DEM_HKH.tif"), overwrite = TRUE)
 
 #----------------------------------------------------------#
 # 3. rasterize species distribution  -----

@@ -30,7 +30,7 @@ species_list <- readxl::read_excel(paste0(data_storage_path,"Datasets/species_li
 # Download mammal range from MDD  -----
 #----------------------------------------------------------#
 
-target_sciname <- "Marmota himalayana"
+target_sciname <- "Bos mutus"
 mammal <- get_mdd_map(target_sciname)
 
 plot(mammal)
@@ -42,7 +42,7 @@ plot(mammal)
 all_sciname <- unique(species_list$sciname)
 
 # test
-all_sciname <- all_sciname[11:15]
+all_sciname <- all_sciname[31:60]
 
 # record potential errors
 error_log <- tibble(sciname = character(), error_msg = character())

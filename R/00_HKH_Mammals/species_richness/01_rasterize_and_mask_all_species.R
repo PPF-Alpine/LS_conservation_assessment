@@ -3,6 +3,8 @@ library(terra)
 library(sf)
 library(stringr)
 library(purrr)
+library(dplyr)
+library(tibble)
 
 
 # ❗ rewrite config file for both datastorage paths
@@ -11,16 +13,36 @@ dem <- rast(paste0(data_storage_path, "Datasets/Mountains/DEM/GMTED2010_30.tiff"
 
 source(here::here("R/00_Config_file_HKH.R"))
 
-## ❗ make a loop for this for all species 
+#----------------------------------------------------------#
+# ♻ RUN LOOP FOR ALL SPECIES -----
+#------------------------------------------------
 
+# functions in function folder (read in withconfig file)
+
+species_list <- species_list |>
+  filter(sciname %in% mammals_multi$sciname)
+
+# run the functions for all species 
+res <- run_all_species(mammals_multi, species_list, dem, data_storage_path)
+res$out_dir   # folder where rasters were saved
+res$errors    # any species that failed, with messages
+
+
+
+
+
+#----------------------------------------------------------#
+# ♻1️⃣FOR INDIVIDUAL SPECIES -----
+#------------------------------------------------
 #----------------------------------------------------------#
 #  rasterize species distribution  -----
 #----------------------------------------------------------#
+all_sciname <- unique(species_list$sciname)
 
 # mammals_multi: sf with columns sciname + MULTIPOLYGON
 # dem: SpatRaster (template grid)
 
-target_sciname <- "Alticola stoliczkanus"
+target_sciname <- "Anourosorex squamipes"
 
 mammal <- mammals_multi|>
   filter(sciname==target_sciname)
@@ -52,16 +74,16 @@ elev_min <- as.numeric(sciname_elev$average_min_elevation[1])
 elev_max <- as.numeric(sciname_elev$average_max_elevation[1])
 
 
-if (!compareGeom(mammal_raster, dem_crop, stopOnError = FALSE)) {
+if (!compareGeom(mammal_raster, dem_sci_crop, stopOnError = FALSE)) {
   # Reproject if CRS differs, then resample to the mammal grid
-  if (!identical(crs(mammal_raster), crs(dem_crop))) {
-    dem_crop <- project(dem_crop, mammal_raster)
+  if (!identical(crs(mammal_raster), crs(dem_sci_crop))) {
+    dem_sci_crop <- project(dem_sci_crop, mammal_raster)
   }
-  dem_crop <- resample(dem_crop, mammal_raster, method = "bilinear")
+  dem_sci_crop <- resample(dem_sci_crop, mammal_raster, method = "bilinear")
 }
 
 # build elevation "outside" mask 
-outside <- is.na(dem_crop) | dem_crop < elev_min | dem_crop > elev_max
+outside <- is.na(dem_sci_crop) | dem_sci_crop < elev_min | dem_sci_crop > elev_max
 
 # zero-out presence where outside the elevation range 
 mammal_elev_masked <- ifel((mammal_raster > 0) & outside, 0, mammal_raster)
