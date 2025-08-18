@@ -56,8 +56,6 @@ if (any(duplicated(ln))) {
   for (i in seq_along(ras_aligned)) names(ras_aligned[[i]]) <- names(ras_aligned)[i]
 }
 
-
-
 #---------------------------------------------#
 # Step 3: stack them
 #---------------------------------------------#
@@ -74,7 +72,7 @@ names(stk)
 #   (crop to extent + mask out DEM NAs)
 #---------------------------------------------#
 
-# dataframe with number and percentage of cells that fall within boundary for each species 
+# dataframe with number and percentage of cells that fall within HKH boundary for each species 
 
 stk <- crop(stk, template)
 stk_masked <- mask(stk, template)
@@ -92,8 +90,19 @@ writeRaster(richness, out_file, overwrite = TRUE, datatype = "INT2U",
             gdal = c("TILED=YES", "COMPRESS=LZW", "PREDICTOR=2", "ZLEVEL=9"))
 
 plot(richness, main = "Species richness (count)")
+#---------------------------------------------#
+# Step 6: endemism in hkh 
+#---------------------------------------------#
 
-######################
-library(terra)
-library(tools)   # for file_path_sans_ext
+# ---- counts of presence cells ----
+total_cells <- as.numeric(global(stk,        fun = "sum", na.rm = TRUE)[,1])
+hkh_cells   <- as.numeric(global(stk_masked, fun = "sum", na.rm = TRUE)[,1])
+
+res_cells <- tibble(
+  species = names(stk),
+  total_cells = total_cells,
+  hkh_cells   = hkh_cells,
+  pct_in_HKH_cells = if_else(total_cells > 0, 100 * hkh_cells / total_cells, NA_real_)
+) %>% arrange(desc(pct_in_HKH_cells))
+
 
