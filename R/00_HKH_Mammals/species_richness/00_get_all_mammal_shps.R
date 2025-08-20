@@ -30,7 +30,7 @@ species_list <- readxl::read_excel(paste0(data_storage_path,"Datasets/species_li
 # Download mammal range from MDD  -----
 #----------------------------------------------------------#
 
-target_sciname <- "Bos mutus"
+target_sciname <- "Herpestes javanicus"
 mammal <- get_mdd_map(target_sciname)
 
 plot(mammal)
@@ -42,7 +42,7 @@ plot(mammal)
 all_sciname <- unique(species_list$sciname)
 
 # test
-all_sciname <- all_sciname[31:60]
+all_sciname <- all_sciname[451:579]
 
 # record potential errors
 error_log <- tibble(sciname = character(), error_msg = character())
@@ -76,13 +76,62 @@ mammals_multi <- mammals_raw %>%
   sf::st_transform(4326) %>%
   sf::st_collection_extract("POLYGON", warn = FALSE) %>%
   dplyr::group_by(sciname) %>%
-  dplyr::summarise(geometry = sf::st_union(geometry), .groups = "drop") %>%
+  dplyr::summarise(geometry = sf::st_make_valid(st_union(geometry)), .groups = "drop") %>%
   sf::st_cast("MULTIPOLYGON")
 
 plot(mammals_multi)
 
 # 
 error_log  # contains sciname + error messages
+
+
+
+#----------------------------------------------------------#
+# if there are errors: run this:   -----
+#----------------------------------------------------------#
+
+# Safe union function that returns NA geometry if both attempts fail
+safe_union <- function(g) {
+  tryCatch(
+    {
+      st_make_valid(st_union(g))
+    },
+    error = function(e1) {
+      tryCatch(
+        st_make_valid(st_buffer(g, 0)),
+        error = function(e2) {
+          # return NA geometry if both fail
+          st_sfc(st_geometrycollection(), crs = st_crs(g))
+        }
+      )
+    }
+  )
+}
+
+# Run pipeline
+mammals_multi <- mammals_raw %>%
+  sf::st_as_sf() %>%
+  sf::st_transform(4326) %>%
+  sf::st_collection_extract("POLYGON", warn = FALSE) %>%
+  group_by(sciname) %>%
+  summarise(geometry = safe_union(geometry), .groups = "drop") %>%
+  st_cast("MULTIPOLYGON")
+
+# Identify failures
+failed_species <- mammals_multi %>%
+  filter(st_is_empty(geometry)) %>%
+  pull(sciname)
+
+if (length(failed_species) > 0) {
+  message("⚠️ The following species failed during union and were skipped: ",
+          paste(failed_species, collapse = ", "))
+}
+
+# Keep only successful geometries
+mammals_multi <- mammals_multi %>%
+  filter(!st_is_empty(geometry))
+
+
 
 #----------------------------------------------------------#
 # write as gpkg  -----
