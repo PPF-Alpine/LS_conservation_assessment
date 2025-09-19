@@ -1,5 +1,3 @@
-
-
 #----------------------------------------------------------#
 # 0. Set up  -----
 #----------------------------------------------------------#
@@ -23,53 +21,45 @@ source(here::here("R/00_Config_file_HKH.R"))
 
 lc <- rast(paste0(data_storage_path, "Datasets/land_cover/rlcms_2021/data/hkh_lc-2021.tif")) 
 
-species_list <- readxl::read_excel(paste0(data_storage_path,"Datasets/species_list/assessment_hkh_mammals_09082025_LS.xlsx"))
-
 # the cropped dem
 dem_crop <- rast(paste0(data_storage_path, "Datasets/DEM_HKH/DEM_HKH.tif"))
 plot(dem_crop)
 
 eco <- rast(paste0(data_storage_path, "Datasets/ecoregions/ecoreg_HKH.tif")) 
 
+
 lc_data_descr <- readxl::read_excel(paste0(data_storage_path,"Datasets/land_cover/lc_data_description.xlsx"))
 
-#----------------------------------------------------------#
-# 1. get species range  -----
-#----------------------------------------------------------#
+hkh_boundary <- sf::st_read(paste0(data_storage_path,"Datasets/HKH_boundary/HKH_boundary.shp"))
 
-# specify sciname 
-# ❗ loop
-
-target_sciname <- "Marmota himalayana"
-
-# run file 
+species_rast<-rast(paste0(data_storage_path, "Datasets/species_list/rasterfiles/Hyaena_hyaena_elev_masked.tif"))
+species_name <- file_path_sans_ext(basename(sources(species_rast)[1]))
+species_name <- sub("_elev_masked$", "", species_name)
 
 #----------------------------------------------------------#
-# 2. rasterize species range  -----
+# mask with lc layer (sp outside hkh)  -----
 #----------------------------------------------------------#
-
-# run file 
-
+lc_mask <- !is.na(lc)
+sp_clipped <- crop(species_rast, hkh_boundary)
+sp_clipped <- crop(species_rast,hkh_boundary)
+plot(species_rast)
 #----------------------------------------------------------#
-# 3. elevational mask per species  -----
+# polygonize species_range  -----
 #----------------------------------------------------------#
+species_poly <- as.polygons(sp_clipped, dissolve = TRUE)
+plot(species_poly)
 
-# run file 
-
-#----------------------------------------------------------#
-# 4. get the ecoregions within species ranges  -----
-#----------------------------------------------------------#
-
-# run file 
 
 #----------------------------------------------------------#
-# 5. combine results to a dataframe  -----
+# mask with lc layer (sp outside hkh)  -----
 #----------------------------------------------------------#
+vals_within_range <- terra::extract(lc, species_poly)
 
-# run file 
+counts <- vals_within_range |>
+  rename(poly_id = ID) |>
+  rename(ras_id = "hkh_lc-2021")|>
+  count(ras_id, name = "n_cells") |>
+  mutate(poly_id = species_name) |>
+  mutate(prop = n_cells / sum(n_cells))
 
-#----------------------------------------------------------#
-# 6. save everything  -----
-#----------------------------------------------------------#
-
-# run file 
+counts

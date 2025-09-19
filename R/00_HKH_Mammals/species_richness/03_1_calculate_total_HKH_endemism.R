@@ -28,7 +28,8 @@ elevations <- species_list|>
 
 total_endemism_join <- total_endemism %>%
   mutate(species = str_replace_all(species, "_", " "))|>
-  left_join(elevations, by= "species")
+  left_join(elevations, by= "species")|>
+  mutate(elev_range = as.numeric(average_max_elevation) - as.numeric(average_min_elevation))
 
 
 # define output path
