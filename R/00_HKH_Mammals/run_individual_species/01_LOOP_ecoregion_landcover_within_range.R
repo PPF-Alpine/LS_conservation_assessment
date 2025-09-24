@@ -3,6 +3,27 @@ library(dplyr)
 library(stringr)
 library(readxl)
 
+# Load configuration file
+source(here::here("R/00_Config_file_HKH.R"))
+
+#----------------------------------------------------------#
+# 0. load files  -----
+#----------------------------------------------------------#
+
+# load files 
+# dem 
+# lc 
+# species list 
+# ecoregions
+
+lc <- rast(paste0(data_storage_path, "Datasets/land_cover/rlcms_2021/data/hkh_lc-2021.tif")) 
+
+species_list <- readxl::read_excel(paste0(data_storage_path,"Datasets/species_list/assessment_hkh_mammals_09082025_LS.xlsx"))
+
+
+eco <- rast(paste0(data_storage_path, "Datasets/ecoregions/ecoreg_HKH.tif")) 
+
+
 # lookup table for land cover descriptions
 lc_data_descr <- read_excel(
   paste0(data_storage_path, "Datasets/land_cover/lc_data_description.xlsx")
