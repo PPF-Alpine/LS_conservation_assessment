@@ -85,7 +85,7 @@ process_species <- function(file, eco, lc, lc_data_descr) {
 
 
 # --- Loop over all rasters ---
-rdir <- paste0(data_storage_path, "Datasets/species_list/rasterfiles/subset_5/")
+rdir <- paste0(data_storage_path, "Datasets/species_list/rasterfiles/subset_9/")
 files <- list.files(rdir, pattern = "_elev_masked\\.tif$", full.names = TRUE)
 
 results <- lapply(files, process_species, eco = eco, lc = lc, lc_data_descr = lc_data_descr)
@@ -96,5 +96,5 @@ all_species_results <- bind_rows(results[!sapply(results, is.null)])
 
 # save for later
 write.csv(all_species_results,
-          file = paste0(data_storage_path, "Datasets/species_list/rasterfiles/00_mammal_summaries/mammal_ecoregion_landcover_subset_5.csv"),
+          file = paste0(data_storage_path, "Datasets/species_list/rasterfiles/00_mammal_summaries/mammal_ecoregion_landcover_subset_9.csv"),
           row.names = FALSE)

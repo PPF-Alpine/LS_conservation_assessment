@@ -74,9 +74,12 @@ richness_fun <- function(x) {
   if (all(is.na(x))) return(NA_real_)
   sum(x > 0, na.rm = TRUE)
 }
+
+
 lcRich   <- app(lc_norm, richness_fun)
 plot(lcRich)
-
+out_file <- file.path(data_storage_path, "Datasets", "land_cover","landcover_richness.tif")
+writeRaster(lcRich, out_file, overwrite = TRUE)
 
 #---------------------------------------------------------------------#
 # write to new file from here --> relate lc diversity to richness ----
@@ -86,23 +89,38 @@ shannon<-rast(paste0(data_storage_path, "Datasets/land_cover/shannon_lc_diversit
 
 richness_aligned <- resample(species_rast,shannon, method = "bilinear")
 plot(shannon)
-
-
-# 5) Now you can stack & sample
+# stack & sample
 stacked <- c(shannon, richness_aligned)
 names(stacked) <- c("lc_shannon", "richness")
+
+# save the shannon raster as png
+#png_filename <- paste0(data_storage_path, "Datasets/land_cover/shannon_heterogeneity.png")
+#png(png_filename, width = 14, height = 9, units = "in", res = 300)
+#plot(shannon)       # base R plot of the raster
+#dev.off()
+
+
+
+df <- as.data.frame(stacked, na.rm = TRUE)
+
+# correlation test
+cor.test(df$lc_shannon, df$richness, method = "spearman")
+
+x11()
+plot(df$lc_shannon, df$richness, pch = 16, cex = 0.5,
+     xlab = "Land-cover heterogeneity (Shannon)",
+     ylab = "Richness")
+lines(lowess(df$lc_shannon, df$richness))
+
 
 set.seed(1)
 pts <- spatSample(stacked, size = 80000, method = "regular",
                   na.rm = TRUE, as.points = TRUE, values = TRUE, xy = TRUE)
 df <- as.data.frame(pts)
 
-library(mgcv)
 m_pois <- glm(richness ~ lc_shannon, data = df, family = poisson())
 summary(m_pois)
 
-
-library(ggplot2)
 
 set.seed(1)
 df_plot <- df[sample(nrow(df), min(30000, nrow(df))), ]  # light subset

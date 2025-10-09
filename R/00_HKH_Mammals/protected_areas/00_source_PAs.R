@@ -26,6 +26,7 @@ hkh_boundary <- sf::st_read(paste0(data_storage_path,"Datasets/HKH_boundary/HKH_
 
 gdb <- paste0(data_storage_path, "Datasets/protected_areas/WDPA_WDOECM.gdb")
 
+
 # list layers
 layers <- sf::st_layers(gdb)$name
 
@@ -130,7 +131,8 @@ cat_area <- cat_area|>
         IUCN_CAT = "TOTAL",
         area_km2 = sum(area_km2, na.rm = TRUE),
         coverage_pct = 100 * sum(area_km2, na.rm = TRUE) / range_km2_num
-      )
-  )
+      ))|>
+  sf::st_set_geometry(NULL)
 
+write.csv(cat_area,paste0(data_storage_path, "Datasets/protected_areas/PA_HKH/cat_area.csv"))
 
