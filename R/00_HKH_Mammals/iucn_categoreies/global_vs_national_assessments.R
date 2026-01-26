@@ -154,21 +154,38 @@ ggplot(plot_df, aes(x = countries_iso, y = prop, fill = rl_change)) +
 
 # plot only up or downgrade
 plot_simple <- rl_comp |>
-  filter(rl_change %in% c("Upgraded nationally", "Downgraded nationally")) |>
+  filter(rl_change %in% c("Upgraded nationally", "Downgraded nationally","Same category")) |>
   group_by(countries_iso, rl_change) |>
   summarise(n = n(), .groups = "drop") |>
   group_by(countries_iso) |>
   mutate(prop = n / sum(n)) |>
   ungroup()
 
-
+library(scales)
 ggplot(plot_simple, aes(x = countries_iso, y = prop, fill = rl_change)) +
-  geom_col(color = "black") +
-  scale_y_continuous(labels = scales::percent) +
+  geom_col(
+    width = 0.75,
+    color = "grey30",
+    linewidth = 0.3
+  ) +
+  scale_y_continuous(
+    labels = percent_format(accuracy = 1),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  scale_fill_viridis_d(
+    option = "inferno",
+    direction = -1,
+    end = 0.9
+  ) +
   labs(
-    x = "Country",
+    x = NULL,
     y = "Proportion of assessed species",
     fill = "Directional change"
   ) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_minimal(base_size = 11) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right"
+  )
