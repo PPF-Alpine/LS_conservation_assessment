@@ -1,13 +1,4 @@
-library(terra)
-library(stringr)
-library(terra)
-library(sf)
-library(stringr)
-library(purrr)
-library(dplyr)
-library(tibble)
-library(tools)
-library(stringr)
+
 # pkgs
 library(terra)        # you already use this
 library(tidyterra)    # ggplot geoms for terra rasters
@@ -26,11 +17,11 @@ species_list <- readxl::read_excel(paste0(data_storage_path,"Datasets/species_li
 
 
 species_richness_total<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/HKH_species_richness_TOTAL.tif"))
-smallest_range<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/biodiv_dimensions_0918/smallest_range.tif"))
-elev_range <-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/smallest_elev_range.tif"))
-HKH_only<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/HKH_only.tif"))
-threatened<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/globally_threatened_species.tif"))
-data_deficient<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/globally_dd_species.tif"))
+smallest_range<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/biodiv_dimensions_0918/smallest_range_0_4.tif"))
+elev_range <-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/biodiv_dimensions_0918/smallest_elev_0_4_new.tif"))
+HKH_only<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/biodiv_dimensions_0918/mosthkh_0_4.tif"))
+threatened<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/biodiv_dimensions_0918/globally_threathened.tif"))
+data_deficient<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/biodiv_dimensions_0918/dd_and_NA.tif"))
 
 
 #---------------------------------------------#

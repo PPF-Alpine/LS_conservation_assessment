@@ -6,6 +6,7 @@ library(stringr)
 library(purrr)
 library(dplyr)
 library(tibble)
+library(tools)
 
 source(here::here("R/00_Config_file_HKH.R"))
 
@@ -50,8 +51,6 @@ files_subset <- files[block]
 
 # check how many actually exist (useful at the end of the folder)
 files_subset <- files_subset[!is.na(files_subset)]
-
-
 #---------------------------------------------#
 # Step 2: align each raster to DEM (CRS/res/extent)
 #         (needed so they can be stacked)
@@ -62,7 +61,6 @@ ras_aligned <- lapply(files_subset, function(fp) {
   names(r) <- species_from_file(fp, with_space = FALSE)  # use "_" to be safe for layer names
   r
 })
-gc()
 
 # Ensure unique names 
 ln <- vapply(ras_aligned, function(r) names(r), character(1))
@@ -75,7 +73,9 @@ if (any(duplicated(ln))) {
 # Step 3: stack them
 #---------------------------------------------#
 stk <- rast(ras_aligned)
-gc()
+plot(stk)
+names(stk)
+
 # from here can be saved and stack can be further used to 
 # 1. calculate richness
 # 2. calculate endemism
@@ -88,40 +88,19 @@ gc()
 # dataframe with number and percentage of cells that fall within HKH boundary for each species 
 
 stk <- crop(stk, template)
-gc()
 stk_masked <- mask(stk, template)
-gc()
-
+plot(stk_masked)
 #---------------------------------------------#
-# Step 5: endemism in hkh 
+# Step 5: richness = sum of 0/1 layers
 #---------------------------------------------#
+richness <- sum(stk_masked, na.rm = TRUE)
 
-# species cell counts within HKH and total
-total_cells <- as.numeric(global(stk,        fun = "sum", na.rm = TRUE)[,1])
-hkh_cells   <- as.numeric(global(stk_masked, fun = "sum", na.rm = TRUE)[,1])
+plot(richness)
 
-# Area 
-cell_km2 <- cellSize(template, unit = "km")
+# save 
+out_file <- file.path(data_storage_path, "Datasets", "species_list","species_richness","HKH_species_richness_401_497.tif")
+writeRaster(richness, out_file, overwrite = TRUE, datatype = "INT2U",
+            gdal = c("TILED=YES", "COMPRESS=LZW", "PREDICTOR=2", "ZLEVEL=9"))
 
-total_area_km2 <- as.numeric(global(stk        * cell_km2, "sum", na.rm = TRUE)[,1])
-hkh_area_km2   <- as.numeric(global(stk_masked * cell_km2, "sum", na.rm = TRUE)[,1])
+plot(richness, main = "Species richness (count)")
 
-# Combine into one dataframe 
-res <- tibble(
-  species = names(stk),
-  total_cells    = total_cells,
-  hkh_cells      = hkh_cells,
-  pct_in_HKH_cells = if_else(total_cells > 0, 100 * hkh_cells / total_cells, NA_real_),
-  total_area_km2 = total_area_km2,
-  hkh_area_km2   = hkh_area_km2,
-  pct_in_HKH_area = if_else(total_area_km2 > 0, 100 * hkh_area_km2 / total_area_km2, NA_real_)
-)
-
-# Sort by species with highest % in HKH (optional)
-res <- res |>
-  arrange(desc(pct_in_HKH_area))
-
-out_path <- file.path(data_storage_path, "Datasets/species_list/species_endemism/species_endemism_401_497.csv")
-
-# Save as CSV
-write_csv(res, out_path)
