@@ -1,3 +1,9 @@
+
+
+
+# all artiodactyla are depreciated.need to downlowd the artiodactyla seperately
+
+
 #----------------------------------------------------------#
 # 0. Set up  -----
 #----------------------------------------------------------#
@@ -21,8 +27,8 @@ species_list <- readxl::read_excel(paste0(data_storage_path,"Datasets/species_li
 
 # for wide ranged elevations
 # full list (global)
-verts_alpine_generalists <- read_excel("~/Desktop/Datasets/Data_Schultz_et_al_global_alpine_biodiversity/Checklists/Vertebrates/verts_alpine_generalists.xlsx")
-  
+verts_alpine_generalists <- readxl::read_excel("~/Desktop/Datasets/Data_Schultz_et_al_global_alpine_biodiversity/Checklists/Vertebrates/verts_alpine_generalists.xlsx")
+
 
 
 # endemism file (contains all species that are processed)
@@ -42,73 +48,24 @@ writexl::write_xlsx(missing_species_df,paste0(data_storage_path,"Datasets/specie
 
 
 #----------------------------------------------------------#
-# check error messages for missing species ---
-#----------------------------------------------------------#
-mdd_check_log <- tibble(
-  sciname   = character(),
-  status    = character(),
-  error_msg = character()
-)
-
-
-check_one_species <- function(sci) {
-  message("Checking: ", sci)
-  
-  tryCatch(
-    {
-      mammal <- get_mdd_map(sci)
-      
-      tibble(
-        sciname   = sci,
-        status    = "species found",
-        error_msg = NA_character_
-      )
-    },
-    error = function(e) {
-      tibble(
-        sciname   = sci,
-        status    = "error",
-        error_msg = conditionMessage(e)
-      )
-    }
-  )
-}
-
-
-
-mdd_check_log <- map_dfr(
-  missing_species_df$sciname,
-  check_one_species
-)
-
-
-#----------------------------------------------------------#
 # Download mammal range from MDD  -----
 #----------------------------------------------------------#
+arto <- st_read("~/Desktop/Manuscripts/Ch_2_HKH_mammals/Datasets/species_list/Artiodactyla/MDD_Artiodactyla/MDD_Artiodactyla.gpkg")
 
-target_sciname <- "Antilope cervicapra"
+arto_subset<-
+  arto|>
+  filter(sciname %in%mdd_check_log$sciname)
 
 
-mammal <- get_mdd_map(target_sciname)
+target_sciname <- "Cervus nippon"
 
+mammal<- arto_subset|>
+  filter(sciname==target_sciname)|>
+  select(geom)|>
+  sf::st_as_sf()
 
 x11()
 plot(mammal)
-
-sf::sf_use_s2(FALSE)
-
-mammals_multi <- mammal |>
-  terra::makeValid() |>
-  sf::st_as_sf() |>
-  sf::st_transform(4326) |>
-  sf::st_collection_extract("POLYGON", warn = FALSE) |>
-  dplyr::group_by(sciname) |>
-  dplyr::summarise(geometry = sf::st_make_valid(sf::st_union(geometry)), .groups = "drop") |>
-  sf::st_cast("MULTIPOLYGON")
-
-sf::sf_use_s2(TRUE)
-
-plot(mammals_multi$geometry)
 
 
 
@@ -132,11 +89,19 @@ plot(mammal_raster)
 #----------------------------------------------------------#
 # elevation mask for mammal distribution  -----
 #----------------------------------------------------------#
+# species list
+species_list <- readxl::read_excel(paste0(data_storage_path,"Datasets/species_list/assessment_hkh_mammals_09082025_LS.xlsx"))
 
 sciname_elev <- species_list|>
   filter(sciname == target_sciname)|>
   select(sciname, average_min_elevation, average_max_elevation)|>
   distinct()
+
+elev_min <- as.numeric(sciname_elev$average_min_elevation[1])
+elev_max <- as.numeric(sciname_elev$average_max_elevation[1])
+
+
+# for wide ranged spec
 
 elev_global <- verts_alpine_generalists |>
   filter(sciname==target_sciname)|>
@@ -144,12 +109,12 @@ elev_global <- verts_alpine_generalists |>
     glob_avg_min_elevation = min(min_elevation, na.rm = TRUE),
     glob_avg_max_elevation = max(max_elevation, na.rm = TRUE))
 
-elev_min <- as.numeric(sciname_elev$average_min_elevation[1])
-elev_max <- as.numeric(sciname_elev$average_max_elevation[1])
-
 
 elev_min <- as.numeric(elev_global$glob_avg_min_elevation[1])
 elev_max <- as.numeric(elev_global$glob_avg_max_elevation[1])
+
+
+# cut range 
 
 if (!compareGeom(mammal_raster, dem_sci_crop, stopOnError = FALSE)) {
   # Reproject if CRS differs, then resample to the mammal grid
