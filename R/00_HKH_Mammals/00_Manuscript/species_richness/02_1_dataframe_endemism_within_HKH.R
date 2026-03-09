@@ -17,8 +17,9 @@ se_2 <- read.csv(paste0(data_storage_path, "Datasets/species_list/species_endemi
 se_3 <- read.csv(paste0(data_storage_path, "Datasets/species_list/species_endemism/species_endemism_201_300.csv"))
 se_4 <- read.csv(paste0(data_storage_path, "Datasets/species_list/species_endemism/species_endemism_301_400.csv"))
 se_5 <- read.csv(paste0(data_storage_path, "Datasets/species_list/species_endemism/species_endemism_401_497.csv"))
+se_6 <- read.csv(paste0(data_storage_path, "Datasets/species_list/species_endemism/species_endemism_missing_sp.csv"))
 
-total_endemism <- bind_rows(se_1,se_2,se_3,se_4,se_5)
+total_endemism <- bind_rows(se_1,se_2,se_3,se_4,se_5,se_6)
 
 # bind species elevational ranges
 elevations <- species_list|>

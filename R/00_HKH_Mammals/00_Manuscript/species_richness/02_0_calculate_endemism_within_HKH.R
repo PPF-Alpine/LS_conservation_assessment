@@ -39,13 +39,14 @@ message("Found ", length(files), " rasters.")
 
 ## do in subests
 in_dir  <- file.path(data_storage_path, "Datasets", "species_list", "rasterfiles")
+in_dir  <- file.path(data_storage_path, "Datasets", "species_list", "rasterfiles","missing_species")
 files   <- list.files(in_dir, pattern = "\\.tif$", full.names = TRUE)
 n_files <- length(files)
 message("Found ", n_files, " rasters.")
 
 # choose a block of files (300 max is too much already)
 # 1-100 works
-block    <- 401:497
+block    <- 1:58
 files_subset <- files[block]
 
 # check how many actually exist (useful at the end of the folder)
@@ -121,7 +122,7 @@ res <- tibble(
 res <- res |>
   arrange(desc(pct_in_HKH_area))
 
-out_path <- file.path(data_storage_path, "Datasets/species_list/species_endemism/species_endemism_401_497.csv")
+out_path <- file.path(data_storage_path, "Datasets/species_list/species_endemism/species_endemism_missing_sp.csv")
 
 # Save as CSV
 write_csv(res, out_path)

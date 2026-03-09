@@ -133,7 +133,9 @@ files   <- list.files(in_dir, pattern="\\.tif$", full.names=TRUE)
 # Filter by species names without a giant regex
 #   - Species names in the table are "Genus species"
 #   - Filenames are expected to begin with "Genus_species..."
-target_keys <- str_replace_all(smallest_elev$species, " ", "_")
+
+# ‼️‼️replace target keys
+target_keys <- str_replace_all(smallest_range$species, " ", "_")
 stems       <- file_path_sans_ext(basename(files))
 
 # Select files whose basenames start with one of the target keys
@@ -183,7 +185,7 @@ aligned_files <- vapply(files_subset, align_write, character(1), outdir=tmp_alig
 # Richness = sum of binary layers per cell.
 # Note: NAs are handled by na.rm=TRUE in app(); we do not explicitly fill NAs here.
 richness_out <- file.path(
-  data_storage_path, "Datasets", "species_list", "species_richness", "smallest_elev_0_4.tif"
+  data_storage_path, "Datasets", "species_list", "species_richness", "biodiversity_dimensions","smallest_range_0_4.tif"
 )
 
 if (file.exists(richness_out)) file.remove(richness_out)
@@ -203,7 +205,7 @@ plot(richness_mask, colNA = "grey90")
 
 # Avoid plotting huge rasters in interactive sessions:
 # plot(richness)  # only if you must, preferably on a small sample/aggregate
-out_file <- file.path(data_storage_path, "Datasets/species_list/species_richness/biodiv_dimensions_0918/smallest_elev_0_4_new.tif")
+out_file <- file.path(data_storage_path, "Datasets/species_list/species_richness/biodiversity_dimensions/smallest_range_0_4.tif")
 writeRaster(richness_mask, out_file, overwrite = TRUE, datatype = "INT2U",
             gdal = c("TILED=YES", "COMPRESS=LZW", "PREDICTOR=2", "ZLEVEL=9"))
 

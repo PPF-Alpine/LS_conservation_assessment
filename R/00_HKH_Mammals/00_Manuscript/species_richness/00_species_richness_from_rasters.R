@@ -40,13 +40,14 @@ message("Found ", length(files), " rasters.")
 
 ## do in subests
 in_dir  <- file.path(data_storage_path, "Datasets", "species_list", "rasterfiles")
+#in_dir  <- file.path(data_storage_path, "Datasets", "species_list", "rasterfiles","missing_species")
 files   <- list.files(in_dir, pattern = "\\.tif$", full.names = TRUE)
 n_files <- length(files)
 message("Found ", n_files, " rasters.")
 
 # choose a block of files (300 max is too much already)
 # 1-100 works
-block    <- 401:497
+block    <- 1:58
 files_subset <- files[block]
 
 # check how many actually exist (useful at the end of the folder)
@@ -98,7 +99,7 @@ richness <- sum(stk_masked, na.rm = TRUE)
 plot(richness)
 
 # save 
-out_file <- file.path(data_storage_path, "Datasets", "species_list","species_richness","HKH_species_richness_401_497.tif")
+out_file <- file.path(data_storage_path, "Datasets", "species_list","species_richness","HKH_species_richness_missing_sp.tif")
 writeRaster(richness, out_file, overwrite = TRUE, datatype = "INT2U",
             gdal = c("TILED=YES", "COMPRESS=LZW", "PREDICTOR=2", "ZLEVEL=9"))
 

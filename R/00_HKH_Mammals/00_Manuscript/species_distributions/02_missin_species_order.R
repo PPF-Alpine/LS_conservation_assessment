@@ -57,14 +57,14 @@ arto_subset<-
   filter(sciname %in%mdd_check_log$sciname)
 
 
-target_sciname <- "Cervus nippon"
+target_sciname <- "Tetracerus quadricornis"
 
 mammal<- arto_subset|>
   filter(sciname==target_sciname)|>
   select(geom)|>
   sf::st_as_sf()
 
-x11()
+
 plot(mammal)
 
 
@@ -84,7 +84,6 @@ mammal_raster <- rasterize(mammal, dem_sci_crop, field = "val", background = 0, 
 
 # crop to remove extra 0s
 mammal_raster <- mask(mammal_raster, mammal)
-plot(mammal_raster)
 
 #----------------------------------------------------------#
 # elevation mask for mammal distribution  -----
@@ -134,7 +133,6 @@ mammal_elev_masked <- ifel((mammal_raster > 0) & outside, 0, mammal_raster)
 mammal_elev_masked[mammal_elev_masked != 1] <- NA
 
 # view
-x11()
 plot(mammal_elev_masked)
 
 # save file 

@@ -86,7 +86,7 @@ mdd_check_log <- map_dfr(
 # Download mammal range from MDD  -----
 #----------------------------------------------------------#
 
-target_sciname <- "Antilope cervicapra"
+target_sciname <- "Dryomys niethammeri"
 
 
 mammal <- get_mdd_map(target_sciname)

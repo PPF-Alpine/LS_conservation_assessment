@@ -104,7 +104,7 @@ aligned_files <- vapply(files_subset, align_write, character(1), outdir=tmp_alig
 #---------------------------------------------#
 # Note: we do not fill NAs; app(..., na.rm=TRUE) handles them.
 richness_out <- file.path(
-  data_storage_path, "Datasets/species_list/species_richness/biodiv_dimensions_0918/dd_and_NA.tif"
+  data_storage_path, "Datasets/species_list/species_richness/biodiversity_dimensions/dd_and_NA.tif"
 )
 
 if (file.exists(richness_out)) file.remove(richness_out)
@@ -123,9 +123,13 @@ plot(richness_mask, colNA = "grey90")
 
 # Avoid plotting huge rasters in interactive sessions:
 # plot(richness)  # only if you must, preferably on a small sample/aggregate
-out_file <- file.path(data_storage_path, "Datasets/species_list/species_richness/biodiv_dimensions_0918/dd_and_NA.tif")
+out_file <- file.path(data_storage_path, "Datasets/species_list/species_richness/biodiversity_dimensions/dd_and_NA.tif")
 writeRaster(richness_mask, out_file, overwrite = TRUE, datatype = "INT2U",
             gdal = c("TILED=YES", "COMPRESS=LZW", "PREDICTOR=2", "ZLEVEL=9"))
+
+
+
+
 
 
 
