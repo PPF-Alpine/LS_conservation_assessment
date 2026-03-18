@@ -56,21 +56,30 @@ template <- dem_crop
 #---------------------------------------------#
 # select species with small area and elev range
 #---------------------------------------------#
-# Subset definitions (here using 40% thresholds; adjust as needed)
+# Subset definitions (here using smaller than the median)
 #  - smallest_range: species with smallest total mapped area
 #  - most_hkh: species with highest % of mapped area inside HKH
 #  - smallest_elev: species with smallest elevational range
+
+
+# smallest_range <- total_endemism_join |> slice_min(total_area_km2, prop = 0.40)
+
 smallest_range <- total_endemism_join |>
-  slice_min(total_area_km2, prop = 0.40)
+  filter(total_area_km2 < median(total_area_km2, na.rm = TRUE))
 
 # 20% highest % HKH (comment says 20%, prop currently 0.40)
+# most_hkh <- total_endemism_join |> slice_max(pct_in_HKH_area, prop = 0.40)
+
 most_hkh <- total_endemism_join |>
-  slice_max(pct_in_HKH_area, prop = 0.40)
+  filter(pct_in_HKH_area < median(pct_in_HKH_area, na.rm = TRUE))
+
+
+
+
+# smallest_elev <- total_endemism_join |> slice_min(elev_range, prop = 0.40)
 
 smallest_elev <- total_endemism_join |>
-  slice_min(elev_range, prop = 0.40)
-
-
+  filter(elev_range < median(elev_range, na.rm = TRUE))
 
 # check out relationships 
 # Scatterplot: log10(range area) vs elevational range, colored by % in HKH
@@ -135,8 +144,8 @@ files   <- list.files(in_dir, pattern="\\.tif$", full.names=TRUE)
 #   - Filenames are expected to begin with "Genus_species..."
 
 # ‼️‼️replace target keys
-target_keys <- str_replace_all(smallest_range$species, " ", "_")
-stems       <- file_path_sans_ext(basename(files))
+target_keys <- str_replace_all(most_hkh$species, " ", "_")
+stems       <- tools::file_path_sans_ext(basename(files))
 
 # Select files whose basenames start with one of the target keys
 files_subset <- files[str_detect(basename(files), paste0("^(", paste(target_keys, collapse="|"), ")"))]
@@ -164,7 +173,7 @@ align_write <- function(infile, outdir) {
   # Resample to template grid
   r <- resample(r, template, method="near")
   # Write aligned single-layer raster to disk
-  out <- file.path(outdir, paste0(file_path_sans_ext(basename(infile)), "_al.tif"))
+  out <- file.path(outdir, paste0(tools::file_path_sans_ext(basename(infile)), "_al.tif"))
   writeRaster(r, out, overwrite=TRUE, wopt=wopt_in)
   out
 }
@@ -185,7 +194,7 @@ aligned_files <- vapply(files_subset, align_write, character(1), outdir=tmp_alig
 # Richness = sum of binary layers per cell.
 # Note: NAs are handled by na.rm=TRUE in app(); we do not explicitly fill NAs here.
 richness_out <- file.path(
-  data_storage_path, "Datasets", "species_list", "species_richness", "biodiversity_dimensions","smallest_range_0_4.tif"
+  data_storage_path, "Datasets", "species_list", "species_richness", "biodiversity_dimensions","mosthkh_median.tif"
 )
 
 if (file.exists(richness_out)) file.remove(richness_out)
@@ -205,7 +214,7 @@ plot(richness_mask, colNA = "grey90")
 
 # Avoid plotting huge rasters in interactive sessions:
 # plot(richness)  # only if you must, preferably on a small sample/aggregate
-out_file <- file.path(data_storage_path, "Datasets/species_list/species_richness/biodiversity_dimensions/smallest_range_0_4.tif")
+out_file <- file.path(data_storage_path, "Datasets/species_list/species_richness/biodiversity_dimensions/mosthkh_median.tif")
 writeRaster(richness_mask, out_file, overwrite = TRUE, datatype = "INT2U",
             gdal = c("TILED=YES", "COMPRESS=LZW", "PREDICTOR=2", "ZLEVEL=9"))
 

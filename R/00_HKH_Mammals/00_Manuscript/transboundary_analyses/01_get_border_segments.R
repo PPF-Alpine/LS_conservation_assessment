@@ -13,7 +13,7 @@ source(here::here("R/00_Config_file_HKH.R"))
 #---------------------------------------------#
 # get the hkh national borders
 #---------------------------------------------#
-
+species_richness_total<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/HKH_species_richness_TOTAL.tif"))
 
 # get the hkh national borders for plots
 
@@ -69,7 +69,7 @@ split_line_100km <- function(line, segment_length = 100000, crs = st_crs(borders
 #---------------------------------------------#
 border_segments <- map_dfr(seq_len(nrow(borders_hkh_sf)), function(i) {
   
-  segs <- split_line_50km(
+  segs <- split_line_100km(
     borders_hkh_sf$geometry[i],
     segment_length = 100000
   )
