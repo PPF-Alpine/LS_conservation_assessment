@@ -1,4 +1,15 @@
+library(sf)
+library(terra)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(units)
+library(lwgeom)
 
+# cut borders in 50 km segments
+source(here::here("R/00_Config_file_HKH.R"))
 
 library(stringr)
 #---------------------------------------------#
@@ -25,20 +36,19 @@ total_endemism_join_test <- total_endemism_join |>
   )
 
 
-#threatened <- total_endemism_join_test|> filter(status_summary_global=="threatened")
+threatened <- total_endemism_join_test|> filter(status_summary_global=="threatened")
 
-threatened <- total_endemism_join_test|>
-  filter(status_summary_national=="threatened")
+# threatened <- total_endemism_join_test|> filter(status_summary_national=="threatened")
 
 # Load DEM for HKH; used as both grid template and mask
 dem_crop <- rast(paste0(data_storage_path, "Datasets/DEM_HKH/DEM_HKH.tif"))
 template <- dem_crop
+template <- terra::project(dem_crop, "EPSG:8857")
 
 #---------------------------------------------#
 # select rasters for species and allign them
 #---------------------------------------------#
-# Template grid for alignment operations
-template <- dem_crop  # your aligned DEM / target grid
+
 
 # terra performance settings:
 #  - memfrac: fraction of available RAM terra can use internally
@@ -71,30 +81,35 @@ files_subset <- files[str_detect(basename(files), paste0("^(", paste(target_keys
 
 message("Found ", length(files_subset), " rasters for target species.")
 
+#file_subset_test <- files_subset[1:5]
 
 #---------------------------------------------#
 # Function: align one raster to template, write to disk
 # (crop early -> project if needed -> resample)
 #---------------------------------------------#
-# For each input raster:
-#   1) Read from disk
-#   2) Crop to template extent (reduces size early)
-#   3) Reproject to template CRS if needed (nearest neighbor for 0/1 data)
-#   4) Resample to template grid (nearest neighbor)
-#   5) Write aligned raster to a temporary aligned directory
 align_write <- function(infile, outdir) {
+  
   r <- rast(infile)
-  # Early crop to template extent to reduce size
-  r <- crop(r, ext(template), snap="out")
-  # Reproject if needed
-  if (!identical(crs(r), crs(template))) {
-    r <- project(r, template, method="near")  # 0/1 data, so nearest neighbor
+  
+  # 1. Reproject first if CRS differs
+  if (!terra::same.crs(r, template)) {
+    r <- terra::project(r, template, method = "near")
   }
-  # Resample to template grid
-  r <- resample(r, template, method="near")
-  # Write aligned single-layer raster to disk
-  out <- file.path(outdir, paste0(tools::file_path_sans_ext(basename(infile)), "_al.tif"))
-  writeRaster(r, out, overwrite=TRUE, wopt=wopt_in)
+  
+  # 2. Crop after CRS matches
+  r <- terra::crop(r, terra::ext(template), snap = "out")
+  
+  # 3. Resample to exact template grid
+  r <- terra::resample(r, template, method = "near")
+  
+  # 4. Write aligned raster
+  out <- file.path(
+    outdir,
+    paste0(tools::file_path_sans_ext(basename(infile)), "_al.tif")
+  )
+  
+  terra::writeRaster(r, out, overwrite = TRUE, wopt = wopt_in)
+  
   out
 }
 
@@ -106,4 +121,20 @@ tmp_aligned_dir <- file.path(tempdir(), "aligned_bin")
 dir.create(tmp_aligned_dir, showWarnings = FALSE)
 
 # Align each species raster and return aligned file paths
-aligned_files <- vapply(files_subset, align_write, character(1), outdir=tmp_aligned_dir)
+aligned_files <- vapply(
+  files_subset,
+  align_write,
+  character(1),
+  outdir = tmp_aligned_dir
+)
+
+
+##############TEST
+
+r <- rast(aligned_files[2])
+
+crs(r)
+crs(template)
+
+plot(r)
+plot(border_segments$geometry, add = TRUE)

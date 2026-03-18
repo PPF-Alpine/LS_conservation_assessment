@@ -9,7 +9,7 @@ library(units)
 library(lwgeom)
 
 # cut borders in 50 km segments
-
+source(here::here("R/00_Config_file_HKH.R"))
 #---------------------------------------------#
 # get the hkh national borders
 #---------------------------------------------#

@@ -72,26 +72,28 @@ borders_hkh_sf <- sf::st_read(paste0(data_storage_path,"Datasets/protected_areas
 # 50 - 75 medium 
 # <50 as low 
 
+# climate 
 thresh_clim <- quantile(values(climate_exposure), probs = 0.75, na.rm = TRUE)
 climate_high <- ifel(climate_exposure >= thresh_clim, 1, 0)
-plot(climate_high)
+
+
 
 thresh_richness <- quantile(values(species_richness_total), probs = 0.75, na.rm = TRUE)
 richness_high <- ifel(species_richness_total >= thresh_richness, 1, 0)
-plot(richness_high)
+
 
 thresh_threathened <- quantile(values(threatened), probs = 0.75, na.rm = TRUE)
 threathened_high <- ifel(threatened >= thresh_threathened, 1, 0)
-plot(threathened_high)
+
 
 thresh_nat_threathened <- quantile(values(threatened_nat), probs = 0.75, na.rm = TRUE)
 threathened_nat_high <- ifel(threatened_nat >= thresh_nat_threathened, 1, 0)
-plot(threathened_nat_high)
+
 
 
 thresh_hkhonly <- quantile(values(HKH_only), probs = 0.75, na.rm = TRUE)
 hkhonly_high <- ifel(HKH_only >= thresh_hkhonly, 1, 0)
-plot(hkhonly_high)
+
 
 # pa raster is already binary 
 
@@ -130,6 +132,99 @@ plot(p_total)
 p_threat <- plot_indiv(threathened_high, "Highest threatened species richness")
 p_clim <- plot_indiv(climate_high, "Highest projected climatic difference")
 p_hkhonly <- plot_indiv(hkhonly_high, "Highest HKH endemics")
+
+
+
+
+## show for each individual map the high, medium and low priority
+# climate
+thresh_clim_50 <- quantile(values(climate_exposure), probs = 0.50, na.rm = TRUE)
+thresh_clim_75 <- quantile(values(climate_exposure), probs = 0.75, na.rm = TRUE)
+
+climate_class <- ifel(climate_exposure >= thresh_clim_75, 2,
+                      ifel(climate_exposure >= thresh_clim_50, 1, 0))
+
+plot(climate_class)
+
+
+# total richness
+thresh_richness_50 <- quantile(values(species_richness_total), probs = 0.50, na.rm = TRUE)
+thresh_richness_75 <- quantile(values(species_richness_total), probs = 0.75, na.rm = TRUE)
+
+richness_class <- ifel(species_richness_total >= thresh_richness_75, 2,
+                       ifel(species_richness_total >= thresh_richness_50, 1, 0))
+
+plot(richness_class)
+
+
+# threatened richness
+thresh_threatened_50 <- quantile(values(threatened), probs = 0.50, na.rm = TRUE)
+thresh_threatened_75 <- quantile(values(threatened), probs = 0.75, na.rm = TRUE)
+
+threatened_class <- ifel(threatened >= thresh_threatened_75, 2,
+                         ifel(threatened >= thresh_threatened_50, 1, 0))
+
+plot(threatened_class)
+
+
+# national threatened richness
+thresh_nat_threatened_50 <- quantile(values(threatened_nat), probs = 0.50, na.rm = TRUE)
+thresh_nat_threatened_75 <- quantile(values(threatened_nat), probs = 0.75, na.rm = TRUE)
+
+threatened_nat_class <- ifel(threatened_nat >= thresh_nat_threatened_75, 2,
+                             ifel(threatened_nat >= thresh_nat_threatened_50, 1, 0))
+
+plot(threatened_nat_class)
+
+
+# HKH-only
+thresh_hkhonly_50 <- quantile(values(HKH_only), probs = 0.50, na.rm = TRUE)
+thresh_hkhonly_75 <- quantile(values(HKH_only), probs = 0.75, na.rm = TRUE)
+
+hkhonly_class <- ifel(HKH_only >= thresh_hkhonly_75, 2,
+                      ifel(HKH_only >= thresh_hkhonly_50, 1, 0))
+
+plot(hkhonly_class)
+
+
+plot_indiv_classes <- function(r, title) {
+  ggplot() +
+    geom_spatraster(data = as.factor(r)) +
+    scale_fill_manual(
+      values = c(
+        "0" = "grey90",
+        "1" = "khaki",
+        "2" = "cadetblue4"
+      ),
+      breaks = c("0", "1", "2"),
+      labels = c("Low", "Medium", "High"),
+      na.value = "transparent",
+      name = NULL
+    ) +
+    theme_minimal(base_size = 10) +
+    labs(title = title) +
+    theme(
+      axis.title = element_blank(),
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      panel.grid = element_blank(),
+      panel.background = element_rect(fill = "white", colour = NA),
+      plot.background = element_rect(fill = "white", colour = NA),
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "right"
+    )
+}
+
+
+p_total <- plot_indiv_classes(richness_class, "Species richness")
+p_threat <- plot_indiv_classes(threatened_class, "Threatened species richness")
+p_clim <- plot_indiv_classes(climate_class, "Projected climatic difference")
+p_hkhonly <- plot_indiv_classes(hkhonly_class, "HKH-associated species")
+
+p_total
+p_threat
+p_clim
+p_hkhonly
 #---------------------------------------------#
 # priority index with threathened
 #---------------------------------------------#
@@ -143,8 +238,6 @@ bio_priority <- richness_high + threathened_high + climate_high
 summary_map <- ifel(bio_priority == 0, 0,ifel(bio_priority >= 1 & pa_raster == 1, bio_priority, bio_priority + 3))
 
 #writeRaster(summary_map,paste0(data_storage_path, "Output/priority_indices/priority_summary_threathend.tif"), overwrite = TRUE)
-
-
 
 #---------------------------------------------#
 # Nicer map
@@ -178,7 +271,7 @@ sum_1 <- ggplot(summary_df, aes(x = x, y = y, fill = class)) +
     "red"
   )) +
   theme_void() +
-  labs(fill = NULL)
+  labs(title = "High priority combined")
 
 x11()
 plot(sum_1)
@@ -362,7 +455,7 @@ plot(sum_3)
 #---------------------------------------------#
 # 
 ggsave(
-  filename = paste0(data_storage_path, "Output/priority_indices/priority_thr.png"),
+  filename = paste0(data_storage_path, "Output/priority_indices/priority_thr_3pr.png"),
   plot = final_plot_thr,
   width = 14,
   height = 9,

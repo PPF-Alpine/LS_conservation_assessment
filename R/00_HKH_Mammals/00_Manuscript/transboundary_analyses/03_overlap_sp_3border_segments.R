@@ -46,47 +46,46 @@ segment_countries <- tibble(
 table(segment_countries$n_countries)
 
 valid_segments <- segment_countries |>
-  filter(n_countries == 2) |>
+  filter(n_countries >= 2) |>
   mutate(
     country_a = map_chr(country_names, 1),
     country_b = map_chr(country_names, 2)
   ) |>
   select(seg_id, country_a, country_b)
 
-
+valid_segments_multi <- segment_countries |>
+  filter(n_countries >= 2) |>
+  select(seg_id, country_names)
 #---------------------------------------------#
 # sides of segments --> countries
 #---------------------------------------------#
-make_segment_sides <- function(seg_id, country_a, country_b, segment_buffers, countries_hkh) {
+make_segment_sides_multi <- function(seg_id, country_names, segment_buffers, countries_hkh) {
   
   buf <- segment_buffers |> filter(seg_id == !!seg_id)
   
-  poly_a <- countries_hkh |> filter(name == country_a)
-  poly_b <- countries_hkh |> filter(name == country_b)
-  
-  side_a <- st_intersection(buf, poly_a) |>
-    mutate(seg_id = seg_id, side = "A", country = country_a)
-  
-  side_b <- st_intersection(buf, poly_b) |>
-    mutate(seg_id = seg_id, side = "B", country = country_b)
-  
-  bind_rows(side_a, side_b)
+  purrr::map_dfr(country_names, function(ctry) {
+    poly <- countries_hkh |> filter(name == ctry)
+    
+    st_intersection(buf, poly) |>
+      mutate(seg_id = seg_id, country = ctry)
+  })
 }
 
 
 segment_sides <- pmap_dfr(
-  valid_segments,
-  make_segment_sides,
+  valid_segments_multi,
+  make_segment_sides_multi,
   segment_buffers = segment_buffers,
   countries_hkh = countries_hkh
 )
-
 
 segment_sides_vect <- terra::vect(segment_sides)
 
 #---------------------------------------------#
 # species present
 #---------------------------------------------#
+segment_sides_vect <- terra::vect(segment_sides)
+
 extract_species_presence <- function(rfile, segment_sides, segment_sides_vect) {
   
   r <- rast(rfile)
@@ -96,7 +95,6 @@ extract_species_presence <- function(rfile, segment_sides, segment_sides_vect) {
   
   tibble(
     seg_id   = segment_sides$seg_id,
-    side     = segment_sides$side,
     country  = segment_sides$country,
     species  = sp_name,
     presence = ex[[2]]
@@ -119,36 +117,30 @@ presence_long <- map_dfr(
 #---------------------------------------------#
 # get overview dataframes 
 #---------------------------------------------#
-presence_wide <- presence_long |>
-  select(seg_id, species, side, presence) |>
-  pivot_wider(
-    names_from = side,
-    values_from = presence,
-    values_fill = 0
+presence_summary <- presence_long |>
+  group_by(seg_id, species) |>
+  summarise(
+    n_countries_present = sum(presence, na.rm = TRUE),
+    countries_present = paste(sort(unique(country[presence == 1])), collapse = ", "),
+    .groups = "drop"
   ) |>
   mutate(
-    shared = ifelse(A == 1 & B == 1, 1, 0),
-    one_sided = ifelse((A + B) == 1, 1, 0),
-    near_border = ifelse((A + B) >= 1, 1, 0)
+    shared = ifelse(n_countries_present >= 2, 1, 0),
+    one_country_only = ifelse(n_countries_present == 1, 1, 0),
+    near_border = ifelse(n_countries_present >= 1, 1, 0)
   )
 
-
-segment_summary <- presence_wide |>
+segment_summary <- presence_summary |>
   group_by(seg_id) |>
   summarise(
     n_shared = sum(shared, na.rm = TRUE),
-    n_one_sided = sum(one_sided, na.rm = TRUE),
+    n_one_country_only = sum(one_country_only, na.rm = TRUE),
     n_near_border = sum(near_border, na.rm = TRUE),
     prop_shared = ifelse(n_near_border > 0, n_shared / n_near_border, 0),
     .groups = "drop"
   )
 
-
-border_segments_sum <- border_segments |>
-  left_join(valid_segments, by = "seg_id") |>
-  left_join(segment_summary, by = "seg_id")
-
-segment_species_lists <- presence_wide |>
+segment_species_lists <- presence_summary |>
   filter(shared == 1) |>
   group_by(seg_id) |>
   summarise(
@@ -156,8 +148,18 @@ segment_species_lists <- presence_wide |>
     .groups = "drop"
   )
 
-border_segments_sum <- border_segments_sum |>
-  left_join(segment_species_lists, by = "seg_id")
+border_segments_sum <- border_segments |>
+  left_join(valid_segments_multi, by = "seg_id") |>
+  left_join(segment_summary, by = "seg_id") |>
+  left_join(segment_species_lists, by = "seg_id")|>
+  mutate(
+    country_str = purrr::map_chr(country_names, ~ paste(.x, collapse = ", ")),
+    
+    species_list = species_list |>
+      stringr::str_remove_all("_elev_masked") |>
+      stringr::str_replace_all("_", " ")
+  ) |>
+  select(-country_names)
 
 #---------------------------------------------#
 # plot 
@@ -180,10 +182,11 @@ plot(plot)
 #---------------------------------------------#
 # safe 
 #---------------------------------------------#
+sapply(border_segments_sum, class)
 
 sf::st_write(
   border_segments_sum,
-  paste0(data_storage_path, "Output/transboundary/transb_TEST_threat.shp"),
+  paste0(data_storage_path, "Output/transboundary/transb_glob_threat.shp"),
   delete_layer = TRUE
 )
 
@@ -191,7 +194,7 @@ sf::st_write(
 
 # 
 ggsave(
-  filename = paste0(data_storage_path, "Output/transboundary/transb_nat_threat.png"),
+  filename = paste0(data_storage_path, "Output/transboundary/transb_glob_threat.png"),
   plot = plot,
   width = 14,
   height = 9,
