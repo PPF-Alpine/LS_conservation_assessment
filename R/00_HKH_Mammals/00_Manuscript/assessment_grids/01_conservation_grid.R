@@ -409,6 +409,7 @@ plot(bio_priority)
 
 summary_map <- ifel(bio_priority == 0, 0,ifel(bio_priority >= 1 & pa_raster == 1, bio_priority, bio_priority + 3))
 plot(summary_map)
+
 #writeRaster(summary_map,paste0(data_storage_path, "Output/priority_indices/priority_summary_hkh_end.tif"), overwrite = TRUE)
 
 # nice map

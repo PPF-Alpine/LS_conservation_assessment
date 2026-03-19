@@ -27,66 +27,54 @@ countries_hkh <- countries |>
 #---------------------------------------------#
 # create buffer around segments
 #---------------------------------------------#
+
+#---------------------------------------------#
+# create buffer around segments
+#---------------------------------------------#
 buffer_dist <- 10000  # meters
 
 segment_buffers <- st_buffer(border_segments, dist = buffer_dist)
 
 
-segment_country_hits <- st_intersects(segment_buffers, countries_hkh)
-
-segment_countries <- tibble(
-  seg_id = border_segments$seg_id,
-  hit_ids = segment_country_hits
-) |>
-  mutate(
-    n_countries = lengths(hit_ids),
-    country_names = map(hit_ids, ~ countries_hkh$name[.x])
-  )
-
-table(segment_countries$n_countries)
-
-valid_segments <- segment_countries |>
-  filter(n_countries == 2) |>
-  mutate(
-    country_a = map_chr(country_names, 1),
-    country_b = map_chr(country_names, 2)
-  ) |>
-  select(seg_id, country_a, country_b)
-
-
 #---------------------------------------------#
 # sides of segments --> countries
 #---------------------------------------------#
-make_segment_sides <- function(seg_id, country_a, country_b, segment_buffers, countries_hkh) {
+
+make_segment_sides_pair <- function(seg_row, countries_hkh, segment_buffers) {
+  
+  seg_id <- seg_row$seg_id
+  ctry_a <- seg_row$country_a
+  ctry_b <- seg_row$country_b
   
   buf <- segment_buffers |> filter(seg_id == !!seg_id)
   
-  poly_a <- countries_hkh |> filter(name == country_a)
-  poly_b <- countries_hkh |> filter(name == country_b)
+  poly_a <- countries_hkh |> filter(name == ctry_a)
+  poly_b <- countries_hkh |> filter(name == ctry_b)
   
   side_a <- st_intersection(buf, poly_a) |>
-    mutate(seg_id = seg_id, side = "A", country = country_a)
+    mutate(seg_id = seg_id, country = ctry_a, side = "a")
   
   side_b <- st_intersection(buf, poly_b) |>
-    mutate(seg_id = seg_id, side = "B", country = country_b)
+    mutate(seg_id = seg_id, country = ctry_b, side = "b")
   
   bind_rows(side_a, side_b)
 }
 
-
-segment_sides <- pmap_dfr(
-  valid_segments,
-  make_segment_sides,
-  segment_buffers = segment_buffers,
-  countries_hkh = countries_hkh
+segment_sides <- purrr::map_dfr(
+  seq_len(nrow(border_segments)),
+  function(i) make_segment_sides_pair(
+    seg_row = border_segments[i, ],
+    countries_hkh = countries_hkh,
+    segment_buffers = segment_buffers
+  )
 )
 
-
 segment_sides_vect <- terra::vect(segment_sides)
-
 #---------------------------------------------#
 # species present
 #---------------------------------------------#
+
+
 extract_species_presence <- function(rfile, segment_sides, segment_sides_vect) {
   
   r <- rast(rfile)
@@ -96,8 +84,8 @@ extract_species_presence <- function(rfile, segment_sides, segment_sides_vect) {
   
   tibble(
     seg_id   = segment_sides$seg_id,
-    side     = segment_sides$side,
     country  = segment_sides$country,
+    side     = segment_sides$side,
     species  = sp_name,
     presence = ex[[2]]
   ) |>
@@ -107,48 +95,42 @@ extract_species_presence <- function(rfile, segment_sides, segment_sides_vect) {
     )
 }
 
-
-presence_long <- map_dfr(
+presence_long <- purrr::map_dfr(
   aligned_files,
   extract_species_presence,
   segment_sides = segment_sides,
   segment_sides_vect = segment_sides_vect
 )
 
-
 #---------------------------------------------#
 # get overview dataframes 
 #---------------------------------------------#
-presence_wide <- presence_long |>
-  select(seg_id, species, side, presence) |>
-  pivot_wider(
-    names_from = side,
-    values_from = presence,
-    values_fill = 0
+
+
+presence_summary <- presence_long |>
+  group_by(seg_id, species) |>
+  summarise(
+    n_countries_present = sum(presence, na.rm = TRUE),
+    countries_present = paste(sort(unique(country[presence == 1])), collapse = ", "),
+    .groups = "drop"
   ) |>
   mutate(
-    shared = ifelse(A == 1 & B == 1, 1, 0),
-    one_sided = ifelse((A + B) == 1, 1, 0),
-    near_border = ifelse((A + B) >= 1, 1, 0)
+    shared = ifelse(n_countries_present >= 2, 1, 0),
+    one_country_only = ifelse(n_countries_present == 1, 1, 0),
+    near_border = ifelse(n_countries_present >= 1, 1, 0)
   )
 
-
-segment_summary <- presence_wide |>
+segment_summary <- presence_summary |>
   group_by(seg_id) |>
   summarise(
     n_shared = sum(shared, na.rm = TRUE),
-    n_one_sided = sum(one_sided, na.rm = TRUE),
+    n_one_country_only = sum(one_country_only, na.rm = TRUE),
     n_near_border = sum(near_border, na.rm = TRUE),
     prop_shared = ifelse(n_near_border > 0, n_shared / n_near_border, 0),
     .groups = "drop"
   )
 
-
-border_segments_sum <- border_segments |>
-  left_join(valid_segments, by = "seg_id") |>
-  left_join(segment_summary, by = "seg_id")
-
-segment_species_lists <- presence_wide |>
+segment_species_lists <- presence_summary |>
   filter(shared == 1) |>
   group_by(seg_id) |>
   summarise(
@@ -156,9 +138,15 @@ segment_species_lists <- presence_wide |>
     .groups = "drop"
   )
 
-border_segments_sum <- border_segments_sum |>
-  left_join(segment_species_lists, by = "seg_id")
-
+border_segments_sum <- border_segments |>
+  left_join(segment_summary, by = "seg_id") |>
+  left_join(segment_species_lists, by = "seg_id") |>
+  mutate(
+    country_str = paste(country_a, country_b, sep = " - "),
+    species_list = species_list |>
+      stringr::str_remove_all("_elev_masked") |>
+      stringr::str_replace_all("_", " ")
+  )
 #---------------------------------------------#
 # plot 
 #---------------------------------------------#
@@ -173,17 +161,18 @@ plot<-ggplot() +
   scale_color_viridis_c(name = "Shared threatened\nspecies") +
   scale_linewidth(range = c(0.5, 2.5), guide = "none") +
   theme_void() +
-  labs(title = "Shared (nationally) threatened mammals along HKH border segments")
+  labs(title = "Shared threatened mammals along HKH border segments")
 
 plot(plot)
 
 #---------------------------------------------#
 # safe 
 #---------------------------------------------#
+sapply(border_segments_sum, class)
 
 sf::st_write(
   border_segments_sum,
-  paste0(data_storage_path, "Output/transboundary/transb_TEST_threat.shp"),
+  paste0(data_storage_path, "Output/transboundary/transb_glob_threat_new.shp"),
   delete_layer = TRUE
 )
 
@@ -191,7 +180,7 @@ sf::st_write(
 
 # 
 ggsave(
-  filename = paste0(data_storage_path, "Output/transboundary/transb_nat_threat.png"),
+  filename = paste0(data_storage_path, "Output/transboundary/transb_glob_threat.png"),
   plot = plot,
   width = 14,
   height = 9,
