@@ -1,12 +1,16 @@
+library(sf)
+library(terra)
+library(rnaturalearth)
+
 #---------------------------------------------#
 # get border segments, countries and cons priority
 #---------------------------------------------#
 
 border_segments <- sf::st_read(paste0(data_storage_path, "Output/transboundary/borders_segments_100_countrypairs.shp"))
 
-cons_prio <- rast(paste0(data_storage_path, "Output/priority_indices/priority_summary_threathend.tif"))
+cons_prio <- terra::rast(paste0(data_storage_path, "Output/priority_indices/priority_summary_threathend.tif"))
 
-cons_prio_eq <- terra::project(cons_prio, crs(border_segments_tr_sp), method = "near")
+cons_prio_eq <- terra::project(cons_prio, crs(border_segments), method = "near")
 
 # read HKH countries again
 countries <- ne_countries(scale = "medium", returnclass = "sf")
@@ -25,7 +29,7 @@ countries_hkh <- countries |>
 
 # create 10km buffer around each segment
 
-buffer_dist <- 10000
+buffer_dist <- 50000
 
 segment_buffers <- st_buffer(border_segments, dist = buffer_dist)
 
@@ -114,6 +118,7 @@ prio_side_summary <- prio_extract |>
   filter(!is.na(sum)) |>
   group_by(seg_id, country, side) |>
   summarise(
+    n_pixels = n(),
     mean_class   = mean(sum, na.rm = TRUE),
     median_class = median(sum, na.rm = TRUE),
     class_0 = sum(sum == 0, na.rm = TRUE),
@@ -124,18 +129,33 @@ prio_side_summary <- prio_extract |>
     class_5 = sum(sum == 5, na.rm = TRUE),
     class_6 = sum(sum == 6, na.rm = TRUE),
     .groups = "drop"
+  ) |>
+  mutate(
+    prop_0 = class_0 / n_pixels,
+    prop_1 = class_1 / n_pixels,
+    prop_2 = class_2 / n_pixels,
+    prop_3 = class_3 / n_pixels,
+    prop_4 = class_4 / n_pixels,
+    prop_5 = class_5 / n_pixels,
+    prop_6 = class_6 / n_pixels
   )
 
 prio_segment_wide <- prio_side_summary |>
   pivot_wider(
     id_cols = seg_id,
     names_from = side,
-    values_from = c(country, mean_class, median_class, class_0, class_1, class_2, class_3, class_4, class_5, class_6),
+    values_from = c(
+      country, n_pixels, mean_class, median_class,
+      class_0, class_1, class_2, class_3, class_4, class_5, class_6,
+      prop_0, prop_1, prop_2, prop_3, prop_4, prop_5, prop_6
+    ),
     names_sep = "_"
   ) |>
   dplyr::rename(
     ctryA = country_A,
     ctryB = country_B,
+    npixA = n_pixels_A,
+    npixB = n_pixels_B,
     meanA = mean_class_A,
     meanB = mean_class_B,
     medA  = median_class_A,
@@ -153,7 +173,21 @@ prio_segment_wide <- prio_side_summary |>
     c5A = class_5_A,
     c5B = class_5_B,
     c6A = class_6_A,
-    c6B = class_6_B
+    c6B = class_6_B,
+    p0A = prop_0_A,
+    p0B = prop_0_B,
+    p1A = prop_1_A,
+    p1B = prop_1_B,
+    p2A = prop_2_A,
+    p2B = prop_2_B,
+    p3A = prop_3_A,
+    p3B = prop_3_B,
+    p4A = prop_4_A,
+    p4B = prop_4_B,
+    p5A = prop_5_A,
+    p5B = prop_5_B,
+    p6A = prop_6_A,
+    p6B = prop_6_B
   )
 
 
