@@ -108,3 +108,6 @@ writeRaster(
   "~/Desktop/Manuscripts/Ch_2_HKH_mammals/Datasets/climate_shift/clim_shift_eucl.tif",
   overwrite = TRUE
 )
+
+
+

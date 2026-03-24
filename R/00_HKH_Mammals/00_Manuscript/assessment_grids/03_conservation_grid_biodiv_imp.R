@@ -79,6 +79,15 @@ sum_1 <- ggplot(summary_df, aes(x = x, y = y, fill = class)) +
     "High biodiv + low climate + unprotected" = "orange"
   ), na.value = "white") +
   theme_void() +
-  labs(title = "High priority combined", fill = NULL)
+  labs(title = NULL)
 
 print(sum_1)
+
+
+ggsave(
+  filename = paste0(data_storage_path, "Output/priority_indices/biodiv_imp.png"),
+  plot = sum_1,
+  width = 14,
+  height = 9,
+  dpi = 300
+)
