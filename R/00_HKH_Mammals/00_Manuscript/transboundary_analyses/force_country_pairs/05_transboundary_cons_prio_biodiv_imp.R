@@ -1,18 +1,49 @@
 library(sf)
 library(terra)
 library(rnaturalearth)
+# pkgs
+library(terra)        # you already use this
+library(tidyterra)    # ggplot geoms for terra rasters
+library(ggplot2)
+library(patchwork)    # to arrange plots
 
+#---------------------------------------------#
+# Step 1: list files
+#---------------------------------------------#
+source(here::here("R/00_Config_file_HKH.R"))
 #---------------------------------------------#
 # get border segments, countries and cons priority
 #---------------------------------------------#
 
+# these are the border segments geometries with line id and a/b country information 
 border_segments <- sf::st_read(paste0(data_storage_path, "Output/transboundary/borders_segments_100_countrypairs.shp"))
 
+# numerical conservatin priority raster 
 cons_prio <- terra::rast(paste0(data_storage_path, "Output/priority_indices/priority_mapp_all_combo.tif"))
-
+plot(cons_prio)
 cons_prio_eq <- terra::project(cons_prio, crs(border_segments), method = "near")
 
-# read HKH countries again
+
+# dataframe that corresponds to the different classes 
+levels_df <- data.frame(
+  value = c(111,110,121,120,131,130,
+            211,210,221,220,231,230,
+            311,310,321,320,331,330),
+  biodiv = rep(c("low","medium","high"), each = 6),
+  climate = rep(c("low","low","medium","medium","high","high"), times = 3),
+  protection = rep(c("protected","unprotected"), 9)
+)
+
+levels_df$class_name <- paste(
+  "Biodiv:", levels_df$biodiv,
+  "| Climate:", levels_df$climate,
+  "|", levels_df$protection
+)
+
+levels_df
+
+
+#  HKH countries 
 countries <- ne_countries(scale = "medium", returnclass = "sf")
 
 hkh_countries <- c("Afghanistan", "Pakistan", "India", "Nepal",
@@ -23,24 +54,26 @@ countries_hkh <- countries |>
   st_make_valid() |>
   st_transform(st_crs(border_segments))
 
+
+countries_hkh_eq <- countries_hkh |>
+  st_transform(st_crs(border_segments))
+
+
 #---------------------------------------------#
 # create buffer around segments
 #---------------------------------------------#
 
-# create 10km buffer around each segment
+# create buffer around each segment
 
 buffer_dist <- 20000
 
 segment_buffers <- st_buffer(border_segments, dist = buffer_dist)
 
-
-countries_hkh_eq <- countries_hkh |>
-  st_transform(st_crs(border_segments))
-
 #---------------------------------------------#
 # get sides for each segment/ country
 #---------------------------------------------#
 
+# get the area of each countries that falls within buffer of border segments 
 make_segment_sides <- function(seg_row, segment_buffers, countries_hkh_eq) {
   
   seg_id <- seg_row$seg_id
@@ -85,13 +118,24 @@ segment_sides <- map_dfr(
 
 segment_sides_vect <- terra::vect(segment_sides)
 
+plot(segment_sides_vect)
+
+#writeVector(segment_sides_vect,paste0(data_storage_path, "Output/transboundary/segment_sides_vect.shp"))
 
 #---------------------------------------------#
 # extract cons prio for each segment side
 #---------------------------------------------#
 
-
 prio_extract <- terra::extract(cons_prio_eq, segment_sides_vect)
+
+#terra::crs(cons_prio)
+#terra::crs(cons_prio_eq)
+#terra::crs(segment_sides_vect)
+
+
+plot(cons_prio_eq)
+plot(segment_sides_vect, add = TRUE, border = "red")
+
 
 # add segment info
 prio_extract$seg_id   <- segment_sides$seg_id[prio_extract$ID]
@@ -99,6 +143,7 @@ prio_extract$country  <- segment_sides$country[prio_extract$ID]
 prio_extract$side     <- segment_sides$side[prio_extract$ID]
 
 names(prio_extract)[2] <- "value"
+
 
 #---------------------------------------------#
 # save 
