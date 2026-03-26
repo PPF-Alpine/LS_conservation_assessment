@@ -107,4 +107,58 @@ comparison_df <- prio_summary|>
   select(-class_name)|>
   left_join(transb_species,by="seg_id")
 
+library(dplyr)
+library(ggplot2)
+
+comparison_df2 <- comparison_df %>%
+  group_by(seg_id) %>%
+  mutate(country_pair = paste(sort(unique(country)), collapse = " - ")) %>%
+  ungroup()|>
+  filter(country_pair!="India")
+
+
+
+plot <- ggplot(comparison_df2,
+       aes(x = priority_score,
+           y = reorder(factor(seg_id), n_shared),
+           group = seg_id)) +
+  geom_line(aes(size = n_shared), color = "grey80", alpha = 0.7) +
+  geom_point(aes(color = protection, size = n_shared), alpha = 0.7) +
+  scale_color_manual(
+    values = c(
+      "protected" = "forestgreen",
+      "unprotected" = "darkred"
+    )
+  ) +
+  scale_size_area(
+    max_size = 8,
+    breaks = c(1, 5, 10, 20, 31),
+    name = "Shared threatened species"
+  ) +
+  guides(
+    size = guide_legend(
+      override.aes = list(alpha = 1),
+      title.position = "top",
+      label.position = "right"
+    )
+  ) +
+  facet_wrap(~ country_pair, scales = "free_y") +
+  labs(
+    x = "Priority score",
+    y = "Border segment",
+    color = "Protection"
+  ) +
+  theme_minimal()
+
+
+ggsave(
+  filename = paste0(
+    data_storage_path,
+    "Output/transboundary/transboundary_cons_prio_biodiv.jpeg"
+  ),
+  plot = plot,
+  width = 14,
+  height = 12,
+  dpi = 300
+)
 
