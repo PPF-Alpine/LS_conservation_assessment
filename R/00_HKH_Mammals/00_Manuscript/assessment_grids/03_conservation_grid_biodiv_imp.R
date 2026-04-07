@@ -124,7 +124,7 @@ plot(combo)
 freq(combo)
 
 
-writeRaster(combo,paste0(data_storage_path, "Output/priority_indices/priority_mapp_all_combo.tif"), overwrite = TRUE)
+writeRaster(combo,paste0(data_storage_path, "Output/priority_indices/priority_mapp_all_combinations.tif"), overwrite = TRUE)
 
 
 # ggplot with all combinations
@@ -152,8 +152,9 @@ levels(combo_cat) <- levels_df
 
 levels(combo_cat)
 cats(combo_cat)
+plot(combo_cat)
 
-writeRaster(combo_cat,paste0(data_storage_path, "Output/priority_indices/priority_mapp_all_combo_cat.tif"), overwrite = TRUE)
+writeRaster(combo_cat,paste0(data_storage_path, "Output/priority_indices/priority_mapp_all_combinations_cat.tif"), overwrite = TRUE)
 
 allcombo <- ggplot() +
   geom_spatraster(data = combo_cat) +

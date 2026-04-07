@@ -19,7 +19,7 @@ source(here::here("R/00_Config_file_HKH.R"))
 #---------------------------------------------#
 
 # these are the border segments geometries with line id and a/b country information 
-border_segments <- sf::st_read(paste0(data_storage_path, "Output/transboundary/borders_segments_100_countrypairs.shp"))
+border_segments <- sf::st_read(paste0(data_storage_path, "Output/transboundary/full_borderlenght_countrypairs.gpkg"))
 
 # numerical conservatin priority raster 
 cons_prio <- terra::rast(paste0(data_storage_path, "Output/priority_indices/priority_mapp_all_combo.tif"))
@@ -137,9 +137,90 @@ prio_extract$seg_id   <- segment_sides$seg_id[prio_extract$ID]
 prio_extract$country  <- segment_sides$country[prio_extract$ID]
 prio_extract$side     <- segment_sides$side[prio_extract$ID]
 prio_extract$pair_id     <- segment_sides$pair_id[prio_extract$ID]
-
+prio_extract$border_length_km <-segment_sides$border_length_km[prio_extract$ID]
 
 names(prio_extract)[2] <- "value"
+
+prio_extract_filtered <- prio_extract|>
+  filter(!is.na(value)) |>
+  group_by(seg_id) |>
+  mutate(total_cells_n = n()) |>
+  ungroup()
+#---------------------------------------------#
+# summarise and visualize 
+#---------------------------------------------#
+
+value_summary <- prio_extract_filtered |>
+  filter(!is.na(value)) |>
+  group_by(seg_id, side, value,country,pair_id,border_length_km) |>
+  summarise(n = n(), .groups = "drop") |>
+  group_by(seg_id, side) |>
+  mutate(
+    total_cells_n = sum(n),
+    prop = round(n / total_cells_n * 100, 4)
+  ) |>
+  ungroup()|>
+  mutate(
+    protection = if_else(
+      value %in% c(111,121,131,211,221,231,311,321,331),
+      "protected",
+      "unprotected"
+    )
+  )|>
+  group_by(seg_id, side, country) |>
+  mutate(
+    prop_protected = sum(prop[protection == "protected"]),
+    prop_unprotected = sum(prop[protection == "unprotected"])
+  ) |>
+  ungroup()
+
+#---------------------------------------------#
+# plot  
+#---------------------------------------------#
+
+plot_data <- value_summary |>
+  distinct(seg_id, side, country, pair_id, prop_protected, prop_unprotected) |>
+  pivot_longer(
+    cols = c(prop_protected, prop_unprotected),
+    names_to = "protection",
+    values_to = "prop"
+  ) |>
+  mutate(
+    protection = recode(
+      protection,
+      prop_protected = "protected",
+      prop_unprotected = "unprotected"
+    )
+  )
+
+
+ggplot(plot_data, aes(x = interaction(pair_id, country, lex.order = TRUE),
+                      y = prop, fill = protection)) +
+  geom_col(width = 0.7) +
+  labs(
+    x = "Country within pair",
+    y = "Percent of extracted cells",
+    fill = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+
+ggplot(plot_data, aes(x = country, y = prop, fill = protection)) +
+  geom_col(width = 0.7) +
+  facet_wrap(~ pair_id, scales = "free_x") +
+  labs(
+    x = NULL,
+    y = "Percent of extracted cells",
+    fill = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 
 
 #---------------------------------------------#
@@ -148,6 +229,6 @@ names(prio_extract)[2] <- "value"
 
 sf::st_write(
   prio_extract,
-  paste0(data_storage_path, "Output/transboundary/border_segments_consprio_biodivimp.gpkg"),
+  paste0(data_storage_path, "Output/transboundary/fullborderlength_consprio_biodivimp.gpkg"),
   delete_layer = TRUE
 )
