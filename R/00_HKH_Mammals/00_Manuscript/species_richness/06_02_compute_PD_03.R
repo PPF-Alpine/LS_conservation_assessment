@@ -201,6 +201,18 @@ sr_raster <- rast(
 plot(pd_raster)
 plot(sr_raster)
 
+pd <- ggplot() +
+  geom_spatraster(data = pd_raster) +
+  scale_fill_viridis_c(na.value = NA, guide = guide_colorbar(title = NULL)) +
+  theme_minimal(base_size = 10) +
+  theme(
+    axis.title = element_blank(),
+    axis.text  = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )+
+  theme(legend.position = "right")
+
 #---------------------------------------------#
 # save results
 #---------------------------------------------#
@@ -213,7 +225,13 @@ writeRaster(pd_raster, file.path(out_dir, "PD_raster.tif"), overwrite = TRUE)
 writeRaster(sr_raster, file.path(out_dir, "SR_raster.tif"), overwrite = TRUE)
 saveRDS(pd_map_df, file.path(out_dir, "pd_map_df.rds"))
 
-
+ggsave(
+  filename = paste0(data_storage_path, "Output/phylogenetic_diversity/pd_plot.jpeg"),
+  plot = pd,
+  width = 14,
+  height = 9,
+  dpi = 300
+)
 #---------------------------------------------#
 # standardize by total richness
 #---------------------------------------------#
@@ -232,3 +250,23 @@ writeRaster(pd_resid_raster, file.path(out_dir, "PD_residuals_raster.tif"), over
 
 plot(pd_resid_raster, main = "phylogenetic diversity residuals")
 
+
+pd_resid<- ggplot() +
+  geom_spatraster(data = pd_resid_raster) +
+  scale_fill_viridis_c(na.value = NA, guide = guide_colorbar(title = NULL)) +
+  theme_minimal(base_size = 10) +
+  theme(
+    axis.title = element_blank(),
+    axis.text  = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )+
+  theme(legend.position = "right")
+
+ggsave(
+  filename = paste0(data_storage_path, "Output/phylogenetic_diversity/pd_resid_plot.jpeg"),
+  plot = pd_resid,
+  width = 14,
+  height = 9,
+  dpi = 300
+)

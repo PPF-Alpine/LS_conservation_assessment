@@ -45,18 +45,6 @@ summary_df <- df |>
   ungroup()
 
 
-ggplot(summary_df, aes(x = category, y = perc, fill = protection)) +
-  geom_col() +
-  labs(
-    x = NULL,
-    y = "Percent of cells",
-    fill = "Protection"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-
-
 protected_df <- summary_df |>
   filter(protection == "protected")
 
@@ -71,3 +59,77 @@ ggplot(protected_df, aes(x = category, y = perc)) +
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+library(tidyr)
+
+# reshape
+wide_df <- summary_df |>
+  select(category, protection, perc) |>
+  pivot_wider(names_from = protection, values_from = perc)
+
+
+
+# set correct order
+wide_df$category <- factor(
+  wide_df$category,
+  levels = c(
+    "High biodiv + High climate",
+    "High biodiv + Med climate",
+    "High biodiv + Low climate",
+    "Med biodiv + High climate",
+    "Other"
+  )
+)
+
+# convert to long for legend
+plot_df <- wide_df |>
+  tidyr::pivot_longer(
+    cols = c(protected, unprotected),
+    names_to = "protection",
+    values_to = "perc"
+  )
+
+
+plot_protection <- ggplot() +
+  # connecting lines (gap)
+  geom_segment(
+    data = wide_df,
+    aes(x = category, xend = category,
+        y = protected, yend = unprotected),
+    color = "grey50"
+  ) +
+  
+  # points WITH legend
+  geom_point(
+    data = plot_df,
+    aes(x = category, y = perc, color = protection),
+    size = 4
+  ) +
+  
+  scale_color_manual(
+    values = c(
+      "protected" = "darkgreen",
+      "unprotected" = "red"
+    ),
+    name = NULL
+  ) +
+  
+  labs(
+    x = NULL,
+    y = "Percent of cells",
+    title = NULL
+  ) +
+  
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+ggsave(
+  filename = paste0(data_storage_path, "Output/priority_indices/protection_status.jpeg"),
+  plot = plot_protection,
+  width = 7,
+  height = 5,
+  dpi = 300
+)
