@@ -82,6 +82,10 @@ comm_sparse <- Matrix(
   sparse = TRUE
 )
 
+dim(comm_sparse)
+nrow(grid_info)
+
+
 comm_sparse[is.na(comm_sparse)] <- 0
 
 #---------------------------------------------#
@@ -97,6 +101,6 @@ grid_info_final <- grid_info_final[keep, ]
 # 6. save
 #---------------------------------------------#
 
-saveRDS(comm_sparse, file.path(data_storage_path, "Output/phylo_comm_chunks/comm_matrix/comm_sparse.rds"))
+saveRDS(comm_sparse, file.path(data_storage_path, "Output/phylo_comm_chunks/comm_matrix/comm_sparse_with_NA.rds"))
 saveRDS(grid_info_final, file.path(data_storage_path, "Output/phylo_comm_chunks/comm_matrix/grid_info_final.rds"))
 
