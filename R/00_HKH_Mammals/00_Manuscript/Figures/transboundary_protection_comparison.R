@@ -92,20 +92,79 @@ segment_compare <- value_summary |>
     names_from = side,
     values_from = c(country, prop_protected),
     names_sep = "_"
-  )
+  )|>
+  left_join(transb_species, by = "seg_id")
 
 # -----------------------------
 # plot 
 # -----------------------------
-library(ggplot2)
-
-ggplot(segment_compare,
-       aes(x = prop_protected_A, y = prop_protected_B)) +
+transb <- ggplot(segment_compare,
+       aes(x = prop_protected_A,
+           y = prop_protected_B,
+           size = n_shared)) +
+  
   geom_point(alpha = 0.6) +
+  
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  
   facet_wrap(~ pair_id) +
+  
   labs(
     x = "Protection (%) - Side A",
-    y = "Protection (%) - Side B"
+    y = "Protection (%) - Side B",
+    size = "Shared threatened species"
+  ) +
+  
+  scale_size_continuous(range = c(1, 8)) +  # adjust if needed
+  
+  theme_minimal()
+
+
+ggsave(
+  filename = file.path(data_storage_path, "Output/transboundary/protection_mismatch_transb.jpeg"),
+  plot = transb,
+  width = 14,
+  height = 12,
+  dpi = 300
+)
+
+
+# -----------------------------
+# how many % of border segments protected overall  
+# -----------------------------
+
+segment_level <- value_summary |>
+  distinct(seg_id, pair_id, side, country, prop_protected)
+
+segment_wide <- value_summary |>
+  distinct(seg_id, pair_id, side, country, prop_protected) |>
+  pivot_wider(
+    names_from = side,
+    values_from = c(country, prop_protected),
+    names_sep = "_"
+  ) |>
+  mutate(
+    sideA_prot = prop_protected_A > 30,
+    sideB_prot = prop_protected_B > 30,
+    protection_status = case_when(
+      sideA_prot & sideB_prot ~ "both sides",
+      sideA_prot | sideB_prot ~ "one side",
+      TRUE ~ "none"
+    )
+  )
+
+summary_segments <- segment_wide |>
+  count(protection_status) |>
+  mutate(
+    perc = n / sum(n) * 100
+  )
+summary_segments
+
+ggplot(summary_segments, aes(x = protection_status, y = perc)) +
+  geom_col() +
+  labs(
+    x = NULL,
+    y = "% of border segments",
+    title = "Protection across border segments"
   ) +
   theme_minimal()
