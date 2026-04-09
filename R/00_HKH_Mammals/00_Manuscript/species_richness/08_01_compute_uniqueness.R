@@ -113,11 +113,9 @@ plot(grid_sub$richness, grid_sub$LCBD,
      xlab = "Richness", ylab = "LCBD")
 
 
-# test the same for full raster/ matrix 
-
-library(Matrix)
-library(vegan)
-library(adespatial)
+# =========================================================
+# compute LCBD for full raster. computationally difficult
+# =========================================================
 
 # remove empty cells
 keep <- Matrix::rowSums(sp_communtiy) > 0
@@ -134,3 +132,126 @@ comm_hel <- vegan::decostand(comm_dense, method = "hellinger")
 lcbd_obj <- adespatial::beta.div(comm_hel, method = "euclidean", nperm = 0)
 
 grid_full$LCBD <- lcbd_obj$LCBD
+
+
+# =========================================================
+# USE THIS FUNCTION INSTEAD
+# =========================================================
+
+
+compute_lcbd_sparse <- function(comm, grid_info) {
+  keep <- Matrix::rowSums(comm) > 0
+  comm <- comm[keep, ]
+  grid <- grid_info[keep, ]
+  
+  richness <- Matrix::rowSums(comm)
+  
+  H <- Diagonal(x = 1 / sqrt(richness)) %*% comm
+  col_means <- Matrix::colMeans(H)
+  
+  row_norm2  <- Matrix::rowSums(H^2)
+  Hm         <- as.numeric(H %*% col_means)
+  mean_norm2 <- sum(col_means^2)
+  
+  row_ss <- row_norm2 - 2 * Hm + mean_norm2
+  row_ss[row_ss < 0] <- 0
+  
+  LCBD <- row_ss / sum(row_ss)
+  
+  grid <- grid |>
+    mutate(
+      richness = richness,
+      LCBD = LCBD,
+      LCBD_pct = rank(LCBD, na.last = "keep") / sum(!is.na(LCBD)),
+      LCBD_hotspot_5 = LCBD_pct > 0.95,
+      LCBD_hotspot_1 = LCBD_pct > 0.99
+    )
+  
+  list(grid = grid, keep = keep)
+}
+
+lcbd_res <- compute_lcbd_sparse(sp_communtiy, grid_info)
+grid_full <- lcbd_res$grid
+
+# =========================================================
+# visualization 
+# =========================================================
+
+make_metric_raster <- function(template, cell_ids, values_vec) {
+  r <- rast(template)
+  values(r) <- NA
+  vals <- values(r)
+  vals[cell_ids] <- values_vec
+  values(r) <- vals
+  r
+}
+
+
+r_lcbd <- make_metric_raster(
+  template = template,
+  cell_ids = grid_full$cell,
+  values_vec = grid_full$LCBD
+)
+
+
+r_lcbd_pct <- make_metric_raster(
+  template = template,
+  cell_ids = grid_full$cell,
+  values_vec = grid_full$LCBD_pct
+)
+
+r_lcbd_hot5 <- make_metric_raster(
+  template = template,
+  cell_ids = grid_full$cell,
+  values_vec = as.numeric(grid_full$LCBD_hotspot_5)
+)
+
+
+
+plot(r_lcbd,
+     col = hcl.colors(100, "viridis"),
+     main = "LCBD")
+
+
+plot(r_lcbd_pct,
+     col = hcl.colors(100, "viridis"),
+     main = "LCBD percentile")
+
+
+plot(r_lcbd_hot5,
+     col = c("grey90", "red"),
+     legend = FALSE,
+     main = "Top 5% LCBD hotspots")
+
+legend("bottomleft",
+       legend = c("Other cells", "Hotspot"),
+       fill = c("grey90", "red"),
+       bty = "n")
+
+
+
+# visualization scatterplot 
+
+set.seed(1)
+df_plot <- grid_full[sample(nrow(grid_full), 50000), ]  # or 10k
+
+p <- ggplot(df_plot, aes(x = richness, y = LCBD)) +
+  geom_point(alpha = 0.3, size = 0.5) +
+  theme_minimal()
+
+print(p)
+
+
+# =========================================================
+# save raster grid 
+# =========================================================
+
+writeRaster(r_lcbd, paste0(data_storage_path, "Output/uniqueness/r_lcbd.tif"))
+
+ggsave(
+  filename = paste0(data_storage_path, "Output/uniqueness/richness_lcbd.jpeg"),
+  plot = p,
+  width = 14,
+  height = 9,
+  dpi = 300
+)
