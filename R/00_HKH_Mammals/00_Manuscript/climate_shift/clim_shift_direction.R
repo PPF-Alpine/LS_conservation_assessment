@@ -51,7 +51,7 @@ mountain_range_name <- mountain_range$Mntn_rn
 # temp
 temp_mountain_crop <- crop(annual_temp, mountain_range)
 temp_mountain <- mask(temp_mountain_crop, mountain_range)
-
+plot(temp_mountain)
 
 #prec
 prec_mountain_crop <- crop(annual_prec, mountain_range)
@@ -61,7 +61,7 @@ prec_mountain <- mask(prec_mountain_crop, mountain_range)
 # temp future
 temp_mountain_crop_future <- crop(annual_temp_ssp85, mountain_range)
 temp_mountain_future <- mask(temp_mountain_crop_future, mountain_range)
-
+plot(temp_mountain_future)
 
 #prec future
 prec_mountain_crop_future <- crop(annual_prec_ssp85, mountain_range)

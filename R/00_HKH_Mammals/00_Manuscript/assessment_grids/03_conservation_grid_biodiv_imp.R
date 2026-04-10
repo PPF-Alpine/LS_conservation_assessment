@@ -60,6 +60,7 @@ prot_class <- ifel(pa_raster == 1, 1, 0)
 #      330 = high biodiv, high climate, unprotected
 #---------------------------------------------#
 combo_all <- biodiv_class * 100 + climate_class * 10 + prot_class
+plot(combo_all)
 
 writeRaster(
   combo_all,
@@ -220,8 +221,3 @@ ggsave(
   dpi = 300
 )
 
-#---------------------------------------------#
-# Optional quick inspection
-#---------------------------------------------#
-plot(combo_all)
-plot(combo_high_bio)
