@@ -132,19 +132,23 @@ p_density <- ggplot(df_long, aes(x = value, fill = pa, color = pa)) +
     show.legend = FALSE
   ) +
   facet_wrap(~ metric, scales = "free", nrow = 2) +
-  scale_fill_manual(values = c("Outside PA" = "#E69F00", "Inside PA" = "#C44E52")) +
-  scale_color_manual(values = c("Outside PA" = "#E69F00", "Inside PA" = "#C44E52")) +
+  scale_fill_manual(values = c("Outside PA" = "#C2B280", "Inside PA" = "#2F5D62")) +
+  scale_color_manual(values = c("Outside PA" = "#C2B280", "Inside PA" = "#2F5D62")) +
   labs(
     x = NULL,
     y = "Density",
     fill = NULL,
     color = NULL
   ) +
-  theme_classic() +
+  theme_classic(base_size = 14) +
   theme(
     strip.background = element_blank(),
-    strip.text = element_text(face = "bold"),
-    legend.position = "right"
+    strip.text = element_text(face = "bold", size = 14),
+    legend.position = "right",
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 13)
   )
 
 p_density
@@ -164,17 +168,30 @@ p_count <- ggplot(df_long, aes(x = value, fill = pa, color = pa)) +
     fill = NULL,
     color = NULL
   ) +
-  theme_classic() +
+  theme_classic(base_size = 14) +
   theme(
     strip.background = element_blank(),
-    strip.text = element_text(face = "bold"),
-    legend.position = "right"
+    strip.text = element_text(face = "bold", size = 14),
+    legend.position = "right",
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 13)
   )
 
 p_count
 
 x11()
 plot(p_count)
+
+
+library(patchwork)
+
+comb <- p_count + p_density + 
+  plot_layout(ncol = 2, guides = "collect") &
+  theme(legend.position = "right")
+
+comb
 
 ggsave(
   filename = file.path(data_storage_path, "Output/priority_indices/counts_pa.png"),
@@ -185,9 +202,17 @@ ggsave(
 )
 
 ggsave(
-  filename = file.path(data_storage_path, "Output/priority_indices/counts_pa.png"),
-  plot = p_count,
+  filename = file.path(data_storage_path, "Output/priority_indices/density_pa.png"),
+  plot = p_density,
   width = 14,
+  height = 9,
+  dpi = 300
+)
+
+ggsave(
+  filename = file.path(data_storage_path, "Output/priority_indices/density_count_pa.png"),
+  plot = p_density,
+  width = 16,
   height = 9,
   dpi = 300
 )

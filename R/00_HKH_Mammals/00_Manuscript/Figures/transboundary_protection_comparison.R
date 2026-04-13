@@ -20,6 +20,8 @@ library(RColorBrewer)
 # get border segments, countries and cons priority
 #---------------------------------------------#
 
+
+
 border_segments_cons_prio <- sf::st_read(paste0(data_storage_path, "Output/transboundary/border_segments_consprio_biodivimp.gpkg"))
 
 transb_species <- sf::st_read(paste0(data_storage_path, "Output/transboundary/transb_glob_threat_new.shp"))|>
@@ -98,12 +100,16 @@ segment_compare <- value_summary |>
 # -----------------------------
 # plot 
 # -----------------------------
-transb <- ggplot(segment_compare,
-       aes(x = prop_protected_A,
-           y = prop_protected_B,
-           size = n_shared)) +
-  
-  geom_point(alpha = 0.6) +
+transb <- ggplot(
+  segment_compare,
+  aes(
+    x = prop_protected_A,
+    y = prop_protected_B,
+    size = n_shared,
+    color = n_shared
+  )
+) +
+  geom_point(shape = 16, alpha = 0.7) +
   
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
   
@@ -112,16 +118,29 @@ transb <- ggplot(segment_compare,
   labs(
     x = "Protection (%) - Side A",
     y = "Protection (%) - Side B",
-    size = "Shared threatened species"
+    color = "Shared threatened species"
   ) +
   
-  scale_size_continuous(range = c(1, 8)) +  # adjust if needed
+  scale_size_continuous(range = c(1, 8), guide = "none") +
   
-  theme_minimal()
+  scale_color_viridis_c(option = "viridis") +
+  
+  theme_classic(base_size = 14) +
+  theme(
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold", size = 14),
+    legend.position = "right",
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 13)
+  )
 
+transb
 
+plot(transb)
 ggsave(
-  filename = file.path(data_storage_path, "Output/transboundary/protection_mismatch_transb.jpeg"),
+  filename = file.path(data_storage_path, "Output/transboundary/plots/protection_mismatch_transb.jpeg"),
   plot = transb,
   width = 14,
   height = 12,
@@ -168,3 +187,59 @@ ggplot(summary_segments, aes(x = protection_status, y = perc)) +
     title = "Protection across border segments"
   ) +
   theme_minimal()
+
+
+
+# -----------------------------
+# how many % of border segments protected individual country pair plots   
+# -----------------------------
+
+# output folder
+out_dir <- file.path(data_storage_path, "Output/transboundary/plots/countypairs")
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+# unique pair IDs
+pair_ids <- unique(segment_compare$pair_id)
+
+for (pid in pair_ids) {
+  
+  df_sub <- segment_compare %>%
+    filter(pair_id == pid)
+  
+  countries <- strsplit(pid, "_")[[1]]
+  country_A <- countries[1]
+  country_B <- countries[2]
+  
+  p <- ggplot(
+    df_sub,
+    aes(
+      x = prop_protected_A,
+      y = prop_protected_B,
+      size = n_shared,
+      color = n_shared
+    )
+  ) +
+    geom_point(shape = 16, alpha = 0.7) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    scale_color_viridis_c(option = "viridis",limits = c(0, 31),) +
+    scale_size_continuous(range = c(1, 8), guide = "none") +
+    coord_equal(xlim = c(0, 100), ylim = c(0, 100)) +
+    labs(
+      title = NULL,
+      x = paste0("Protection (%) - ", country_A),
+      y = paste0("Protection (%) - ", country_B),
+      color = "Shared threatened species"
+    ) +
+    theme_minimal(base_size = 14)
+  
+  # make filename safe
+  file_safe <- gsub("[^A-Za-z0-9_\\-]", "_", pid)
+  
+  ggsave(
+    filename = file.path(out_dir, paste0("transboundary_", file_safe, ".jpeg")),
+    plot = p,
+    width = 6,
+    height = 5,
+    dpi = 300
+  )
+}

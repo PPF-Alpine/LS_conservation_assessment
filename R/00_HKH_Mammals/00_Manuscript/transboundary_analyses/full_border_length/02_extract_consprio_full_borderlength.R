@@ -20,7 +20,7 @@ source(here::here("R/00_Config_file_HKH.R"))
 
 # these are the border segments geometries with line id and a/b country information 
 border_segments <- sf::st_read(paste0(data_storage_path, "Output/transboundary/full_borderlenght_countrypairs.gpkg"))
-
+plot(border_segments$geom)
 # numerical conservatin priority raster 
 cons_prio <- terra::rast(paste0(data_storage_path, "Output/priority_indices/priority_mapp_all_combo.tif"))
 plot(cons_prio)
