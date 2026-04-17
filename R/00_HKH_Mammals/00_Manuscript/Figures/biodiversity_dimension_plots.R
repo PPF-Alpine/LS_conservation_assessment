@@ -23,8 +23,15 @@ HKH_only<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness
 threatened<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/biodiversity_dimensions/globally_threathened.tif"))
 threatened_nat<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/biodiversity_dimensions/nationally_threathened.tif"))
 data_deficient<-rast(paste0(data_storage_path, "Datasets/species_list/species_richness/biodiversity_dimensions/dd_and_NA.tif"))
+uniqueness <- rast(paste0(data_storage_path, "Output/uniqueness/r_lcbd.tif"))
+phylogenetic <- rast(paste0(data_storage_path, "Output/phylogenetic_diversity/PD_raster.tif"))
 
-
+#uniqueness[is.na(uniqueness)] <- 0
+phylogenetic[is.na(phylogenetic)] <- 0
+#uniqueness <- mask(uniqueness, species_richness_total)
+plot(uniqueness)
+phylogenetic <- resample(phylogenetic, species_richness_total)
+phylogenetic <- mask(phylogenetic, species_richness_total)
 #---------------------------------------------#
 # plot single category
 #---------------------------------------------#
@@ -68,19 +75,27 @@ p_hkh     <- plot_r(HKH_only,               "HKH-only species")
 p_threat  <- plot_r(threatened,             "Globally threatened")
 p_threat_nat  <- plot_r(threatened_nat,             "Nationally threatened")
 p_dd      <- plot_r(data_deficient,         "Data deficient")
+p_uniq      <- plot_r(uniqueness,         "Uniqueness")
+p_pd      <- plot_r(phylogenetic,         "Phylogenetic diversity")
 
 # arrange: 3 columns x 2 rows (change ncol/nrow as you like)
 # guides = "keep" ensures each plot keeps its own legend
-final_plot <- (p_total | p_small ) /
-  (p_elev | p_hkh) /
-  (p_threat_nat  | p_threat | p_dd) +
+final_plot <- (p_total | p_small) /
+  (p_elev|p_hkh)/
+  (p_uniq  | p_pd ) +
   theme(plot.title = element_text(size = 14, face = "bold"))
 
 # show it
 final_plot
 
 
+# arrange: 3 columns x 2 rows (change ncol/nrow as you like)
+# guides = "keep" ensures each plot keeps its own legend
+final_plot_2 <- (p_threat | p_threat_nat|p_dd)+
+  theme(plot.title = element_text(size = 14, face = "bold"))
 
+# show it
+final_plot_2
 #---------------------------------------------#
 # account for fraction of total species richness per cell
 #---------------------------------------------#
@@ -110,7 +125,8 @@ p_dd      <- plot_r(data_deficient,         "Data deficient")
 
 # arrange: 3 columns x 2 rows (change ncol/nrow as you like)
 # guides = "keep" ensures each plot keeps its own legend
-final_plot_norm <- (p_total | p_small | p_elev) /
+final_plot_norm <- (p_total | p_small ) /
+  (p_elev)
   (p_hkh  | p_threat | p_dd) +
   theme(plot.title = element_text(size = 14, face = "bold"))
 
@@ -141,12 +157,22 @@ writeRaster(prop_layers, out_file, overwrite = TRUE, datatype = "FLT4S",
 #---------------------------------------------#
 # optional: save a high-res imageggsave
 ggsave(
-  filename = paste0(data_storage_path, "Output/biodiv_dimensions/HKH_biodiversity_maps.png"),
+  filename = paste0(data_storage_path, "Output/biodiv_dimensions/HKH_biodiversity_maps_full.png"),
   plot = final_plot,
-  width = 14,
-  height = 9,
+  width = 12,
+  height = 10,
   dpi = 300
 )
+
+
+ggsave(
+  filename = paste0(data_storage_path, "Output/biodiv_dimensions/HKH_biodiversity_cons_status.png"),
+  plot = final_plot_2,
+  width = 14,
+  height = 5,
+  dpi = 300
+)
+
 
 # optional: save a high-res imageggsave
 ggsave(
