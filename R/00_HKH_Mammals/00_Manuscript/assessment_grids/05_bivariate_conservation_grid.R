@@ -105,6 +105,14 @@ bivar_df$class <- factor(
   levels = c(11,12,13,21,22,23,31,32,33)
 )
 
+
+writeRaster(
+  bivar,
+  file.path(data_storage_path, "Output/priority_indices/bivariate_raster.tif"),
+  overwrite = TRUE
+)
+
+
 bivar_cols <- c(
   "11" = "#e8e8e8",
   "12" = "#b8d6be",

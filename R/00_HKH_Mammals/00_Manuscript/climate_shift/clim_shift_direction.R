@@ -51,6 +51,7 @@ mountain_range_name <- mountain_range$Mntn_rn
 # temp
 temp_mountain_crop <- crop(annual_temp, mountain_range)
 temp_mountain <- mask(temp_mountain_crop, mountain_range)
+
 plot(temp_mountain,main = "temp current")
 
 #prec
@@ -111,5 +112,15 @@ writeRaster(
   overwrite = TRUE
 )
 
+writeRaster(
+  temp_mountain,
+  "~/Desktop/Manuscripts/Ch_2_HKH_mammals/Datasets/climate_shift/temp_present.tif",
+  overwrite = TRUE
+)
 
 
+writeRaster(
+  temp_mountain_future,
+  "~/Desktop/Manuscripts/Ch_2_HKH_mammals/Datasets/climate_shift/temp_future.tif",
+  overwrite = TRUE
+)
