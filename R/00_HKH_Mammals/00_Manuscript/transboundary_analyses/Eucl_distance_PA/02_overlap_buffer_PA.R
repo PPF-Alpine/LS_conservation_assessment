@@ -2,6 +2,69 @@ library(sf)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(sf)
+library(dplyr)
+library(purrr)
+
+
+source(here::here("R/00_Config_file_HKH.R"))
+#---------------------------------------------#
+# get country borders GADM for each country individually
+#---------------------------------------------#
+AFG <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_AFG_shp/gadm41_AFG_0.shp"))
+# 1 obs 
+
+IND_country <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_IND_shp/gadm41_IND_0_clean.shp"))|>
+  dplyr::filter(GID_0 == "IND")
+# 1 obs
+
+IND_ndlsa <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_IND_shp/gadm41_IND_0_clean.shp"))|>
+  dplyr::filter(GID_0 != "IND")
+# 5 obs
+
+NPL <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_NPL_shp/gadm41_NPL_0.shp"))
+# 1 obs 
+
+PAK_country <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_PAK_shp/gadm41_PAK_0_clean.shp"))|>
+  dplyr::filter(GID_0 == "PAK")
+# 1 obs 
+
+PAK_ndlsa <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_PAK_shp/gadm41_PAK_0_clean.shp"))|>
+  dplyr::filter(GID_0 != "PAK")
+# 1 obs
+
+BTN <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_BTN_shp/gadm41_BTN_0.shp"))
+
+# GADM
+CHN_country <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_CHN_shp/cleaned_CHN.shp"))|> # use this one here bc of PA 
+dplyr::filter(GID_0 == "CHN")
+
+CHN_ndlsa <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_CHN_shp/cleaned_CHN.shp"))|>
+  dplyr::filter(GID_0 != "CHN")
+
+MMR <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_MMR_shp/gadm41_MMR_0.shp"))
+
+BGD <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/gadm41_BGD_shp/gadm41_BGD_0.shp"))
+
+
+plot(CHN_country$geometry)
+#---------------------------------------------#
+# 1. combine and clean names
+#---------------------------------------------#
+
+countries_all <- bind_rows(
+  AFG, 
+  NPL, 
+  PAK_country, 
+  PAK_ndlsa,
+  IND_country, 
+  IND_ndlsa,
+  CHN_country, 
+  CHN_ndlsa,
+  MMR, 
+  BGD, BTN
+)|>
+  st_make_valid()
 
 #---------------------------------------------#
 # 1. Read and prepare data
@@ -22,9 +85,6 @@ ndlsa_lookup <- readxl::read_xlsx(paste0(data_storage_path, "Datasets/transbound
 #  load buffered borders
 #---------------------------------------------#
 
-library(sf)
-library(dplyr)
-library(purrr)
 
 buffer_folder <- paste0(
   data_storage_path,
@@ -59,6 +119,8 @@ plot(border_buffer_sides$geom)
 #---------------------------------------------#
 # overlap first with countries because of edges 
 # assign each PA to a country
+
+## IMPORTANT ! HERE I NEED To use the different CHINA shapefile (otherwise PAs are filtered out)
 pa_country <- st_intersection(
   pa,
   countries_all |> 
@@ -72,6 +134,7 @@ pa_country <- st_intersection(
   slice_max(country_overlap_m2, n = 1, with_ties = FALSE) |>
   ungroup() |>
   select(WDPAID, pa_country = GID_0)
+
 
 pa2 <- pa |>
   left_join(pa_country, by = "WDPAID")
@@ -236,6 +299,8 @@ nearest_across <- nearest_internal |>
     nearest_internal_km = nearest_internal_m / 1000,
     nearest_across_km = nearest_across_m / 1000
   )
+
+
 #---------------------------------------------#
 # 6. Final PA-level summary
 #---------------------------------------------#
@@ -264,14 +329,57 @@ pa_distance_coverage_geom <- nearest_across |>
     nearest_across_km,geom
   )
 
-# sf::st_write(pa_distance_coverage_geom, paste0(data_storage_path, "Datasets/transboundary/GADM/pairwise_border_buffers/pa_distance_coverage_geom_2.gpkg"))
+
+
+# join the missing country pairs (those with no PAs to df)
+
+pa_distance_coverage_geomtest <- border_buffer_sides |>
+  select(
+    pair_id, country_1, country_2,
+    border_length_m, border_length_km,
+    buffer_m, GID_0, COUNTRY,
+    border_side, buffer_side_id,
+    buffer_area_m2, buffer_area_km2,
+    geom
+  ) |>
+  left_join(
+    pa_distance_coverage_geom |>
+      st_drop_geometry() |>
+      select(
+        pair_id, country_1, country_2, border_side,
+        buffer_side_id, buffer_m,
+        pa_id, WDPAID,
+        pa_overlap_km2, pa_buffer_cover_pct,
+        nearest_internal_WDPAID,
+        nearest_internal_km,
+        nearest_across_side,
+        nearest_across_WDPAID,
+        nearest_across_km
+      ),
+    by = c(
+      "pair_id",
+      "country_1",
+      "country_2",
+      "border_side",
+      "buffer_side_id",
+      "buffer_m"
+    )
+  ) |>
+  mutate(
+    has_pa = !is.na(WDPAID),
+    n_pa = if_else(has_pa, 1L, 0L)
+  )
+
+
+
+sf::st_write(pa_distance_coverage_geom, paste0(data_storage_path, "Datasets/transboundary/GADM/pairwise_border_buffers/distances/pa_distance_coverage.gpkg"),append=FALSE)
 
 #---------------------------------------------#
 # 7. Plot nearest distances by country side
 #---------------------------------------------#
 
 # to only run the plots : 
-pa_distance_coverage_summary <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/pairwise_border_buffers/pa_distance_coverage_geom_2.gpkg"))
+pa_distance_coverage_summary <- sf::st_read(paste0(data_storage_path, "Datasets/transboundary/GADM/pairwise_border_buffers/distances/pa_distance_coverage.gpkg"))
 
 # internal: one point per PA on its own side
 internal_points <- pa_distance_coverage_summary |>
@@ -309,7 +417,7 @@ points_df <- bind_rows(internal_points, across_points) |>
 
 
 # named lookup vector: Z01 = "Jammu and Kashmir", etc.
-ndlsa_lookup <- setNames(ndlsa_names$ndlsa_name, ndlsa_names$GID_0)
+ndlsa_lookup <- setNames(ndlsa_lookup$ndlsa_name, ndlsa_lookup$GID_0)
 
 points_df <- points_df |>
   mutate(
@@ -355,7 +463,7 @@ plot <- ggplot() +
     width = 0.2
   ) +
   labs(
-    x = "Country side",
+    x = NULL,
     y = "Nearest neighbor distance (km)",
     color = "Comparison"
   ) +
@@ -369,6 +477,7 @@ plot <- ggplot() +
     legend.text = element_text(size = 12)
   )
 
+plot(plot)
 
 ggsave(
   filename = paste0(data_storage_path, "Output/transboundary/euclidean_dist_plot.png"),
@@ -377,3 +486,27 @@ ggsave(
   height = 9,
   dpi = 300
 )
+
+# ration of distance internal and across 
+ratio_df <- summary_df |>
+  select(border_side, comparison, mean_km) |>
+  pivot_wider(
+    names_from = comparison,
+    values_from = mean_km
+  )
+
+ratio_df <- ratio_df |>
+  mutate(
+    ratio = `Across border` / Internal,
+    barrier_index = (`Across border` - Internal) / Internal
+  )
+
+ggplot(ratio_df, aes(x = border_side, y = ratio)) +
+  geom_col(fill = "steelblue") +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  labs(
+    x = "Border side",
+    y = "Distance ratio (Across / Internal)"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
