@@ -18,7 +18,7 @@ species_richness_total<-rast(paste0(data_storage_path, "Datasets/species_list/sp
 # get the hkh national borders for plots
 
 borders <- ne_countries(scale = "medium", returnclass = "sf")
-hkh_countries <- c("Afghanistan", "Pakistan", "India", "Nepal", "Bhutan", "China", "Myanmar", "Bangladesh")
+hkh_countries <- c("Afghanistan", "Pakistan", "India", "Nepal", "Bhutan", "China", "Myanmar", "Bangladesh","Kashmir")
 
 borders <- borders[borders$name %in% hkh_countries, ]
 
@@ -89,7 +89,7 @@ border_segments$len_km  <- as.numeric(st_length(border_segments)) / 1000
 summary(border_segments$len_km)
 
 
-
+plot(border_segments)
 #---------------------------------------------#
 # safe
 #---------------------------------------------#

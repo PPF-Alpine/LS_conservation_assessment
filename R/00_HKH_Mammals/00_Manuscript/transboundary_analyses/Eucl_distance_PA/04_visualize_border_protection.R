@@ -1,5 +1,14 @@
 
+library(sf)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(purrr)
 
+
+source(here::here("R/00_Config_file_HKH.R"))
 #---------------------------------------------#
 # Plot preparations 
 #---------------------------------------------#
@@ -9,6 +18,8 @@ pa_distance_coverage_summary <- sf::st_read(paste0(data_storage_path, "Datasets/
 
 
 ndlsa_lookup <- readxl::read_xlsx(paste0(data_storage_path, "Datasets/transboundary/GADM/ndlsa_clean.xlsx"))
+ndlsa_lookup <- setNames(ndlsa_lookup$ndlsa_name, ndlsa_lookup$GID_0)
+
 
 country_area <- countries_all |>
   st_transform(6933) |>   # equal-area projection
@@ -17,7 +28,15 @@ country_area <- countries_all |>
   mutate(country_area_km2 = as.numeric(st_area(geometry)) / 1e6) |>
   st_drop_geometry()
 
+coverage_df <- readxl::read_xlsx(paste0(data_storage_path, "Datasets/transboundary/GADM/country_share_borderbuffers.xlsx"))|>
+  mutate(
+    GID_0 = dplyr::recode(GID_0, !!!ndlsa_lookup)
+  )
+  
 
+#---------------------------------------------#
+# data rearangements 
+#---------------------------------------------#
 # internal: one point per PA on its own side
 internal_points <- pa_distance_coverage_summary |>
   distinct(pair_id, border_side, WDPAID, .keep_all = TRUE) |>
@@ -49,9 +68,6 @@ across_points <- pa_distance_coverage_summary |>
 points_df <- bind_rows(internal_points, across_points) |>
   filter(!is.na(distance_km))
 
-
-# named lookup vector: Z01 = "Jammu and Kashmir", etc.
-ndlsa_lookup <- setNames(ndlsa_lookup$ndlsa_name, ndlsa_lookup$GID_0)
 
 points_df <- points_df |>
   mutate(
@@ -111,6 +127,7 @@ plot <- ggplot() +
     legend.text = element_text(size = 12)
   )
 
+x11()
 plot(plot)
 
 ggsave(
@@ -120,6 +137,87 @@ ggsave(
   height = 6,
   dpi = 300
 )
+
+#---------------------------------------------#
+# include size of buffer area 
+#---------------------------------------------#
+buffer_area_country <- pa_distance_coverage_summary |>
+  st_drop_geometry() |>
+  mutate(
+    border_side = dplyr::recode(border_side, !!!ndlsa_lookup),
+    border_side = stringr::str_squish(border_side)
+  ) |>
+  group_by(border_side) |>
+  summarise(
+    total_buffer_area_km2 = sum(unique(buffer_area_km2), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+points_scaled <- points_df |>
+  left_join(buffer_area_country, by = "border_side") |>
+  mutate(
+    distance_scaled = distance_km / sqrt(total_buffer_area_km2)
+  )
+
+summary_scaled <- points_scaled |>
+  group_by(border_side, comparison) |>
+  summarise(
+    mean_scaled = mean(distance_scaled, na.rm = TRUE),
+    se_scaled = sd(distance_scaled, na.rm = TRUE) / sqrt(n()),
+    n = n(),
+    .groups = "drop"
+  )
+
+plot_2 <- ggplot() +
+  geom_jitter(
+    data = points_scaled,
+    aes(x = border_side, y = distance_scaled, color = comparison),
+    position = position_jitterdodge(jitter.width = 0.15, dodge.width = 0.5),
+    size = 1.6,
+    alpha = 0.5
+  ) +
+  geom_point(
+    data = summary_scaled,
+    aes(x = border_side, y = mean_scaled, color = comparison),
+    position = position_dodge(width = 0.5),
+    size = 3
+  ) +
+  geom_errorbar(
+    data = summary_scaled,
+    aes(
+      x = border_side,
+      ymin = mean_scaled - se_scaled,
+      ymax = mean_scaled + se_scaled,
+      color = comparison
+    ),
+    position = position_dodge(width = 0.5),
+    width = 0.2
+  ) +
+  labs(
+    x = NULL,
+    y = "Scaled nearest-neighbor distance",
+    color = NULL
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(size = 12, angle = 90, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    legend.title = element_text(size = 13),
+    legend.text = element_text(size = 12)
+  )
+x11()
+plot(plot_2)
+
+ggsave(
+  filename = paste0(data_storage_path, "Output/transboundary/plots/euclidean_distance_scaled.png"),
+  plot = plot_2,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+
 #---------------------------------------------#
 # coverage % per country 
 #---------------------------------------------#
@@ -167,6 +265,7 @@ coverage <- ggplot( coverage_country_df,
          axis.title.y = element_text(size = 14) )
 
 
+plot(coverage)
 
 ggsave(
   filename = paste0(data_storage_path, "Output/transboundary/plots/border_pa_coverage.png"),
@@ -176,6 +275,52 @@ ggsave(
   dpi = 300
 )
 
+#---------------------------------------------#
+# include the information on how much is actually border area in each country
+#---------------------------------------------#
+coverage_plot_df <- coverage_country_df |>
+  left_join(
+    coverage_df |> 
+      select(GID_0, border_share_of_country),
+    by = c("border_side" = "GID_0")
+  )
+
+coverage <- ggplot(
+  coverage_plot_df,
+  aes(x = reorder(border_side, border_pa_coverage_prop))
+) +
+  geom_col(
+    aes(y = border_pa_coverage_prop),
+    fill = "grey45"
+  ) +
+  geom_point(
+    aes(y = border_share_of_country),
+    color = "red",
+    size = 3
+  ) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = "Proportion",
+    caption = "Bars = proportion of border region protected; red points = proportion of country within border region"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 14)
+  )
+
+
+plot(coverage)
+
+ggsave(
+  filename = paste0(data_storage_path, "Output/transboundary/plots/border_pa_coverage_scaled.png"),
+  plot = coverage,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
 #---------------------------------------------#
 # ranking of country pairs  
 #---------------------------------------------#
@@ -258,3 +403,5 @@ ggsave(
   height = 6,
   dpi = 300
 )
+
+

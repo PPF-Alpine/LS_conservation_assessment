@@ -10,7 +10,7 @@ library(terra)
 #---------------------------------------------#
 
 hkh_countries <- c("Afghanistan", "Pakistan", "India", "Nepal",
-                   "Bhutan", "China", "Myanmar", "Bangladesh")
+                   "Bhutan", "China", "Myanmar", "Bangladesh","Kashmir")
 
 countries_hkh <- ne_countries(scale = "medium", returnclass = "sf") |>
   filter(name %in% hkh_countries) |>
@@ -68,6 +68,7 @@ pairwise_borders_merged <- pairwise_borders |>
     .groups = "drop"
   )
 
+plot(pairwise_borders_merged)
 #---------------------------------------------#
 # 4. function to split one LINESTRING into ~100 km segments
 #---------------------------------------------#
@@ -111,6 +112,7 @@ border_segments$len_km <- as.numeric(st_length(border_segments)) / 1000
 
 summary(border_segments$len_km)
 
+plot(border_segments$geometry)
 
 #---------------------------------------------#
 # safe
