@@ -1,5 +1,10 @@
 library(leaflet)
 library(htmlwidgets)
+library(sf)
+# Load configuration file
+
+
+source(here::here("R/00_Config_file_HKH.R"))
 
 # 
 hkh_gmba <- sf::st_read("C:/Users/losch5089/OneDrive - University of Bergen/Desktop/ICIMOD_work/HKH_Boundary/HKH_GMBA_clip.shp")
@@ -168,8 +173,6 @@ species_list <- readxl::read_excel(paste0(data_storage_path,"Datasets/species_li
   distinct(sciname)
 
 
-library(dplyr)
-
 species_not_in_assessment <- species_df |>
   anti_join(
     species_list,
@@ -181,7 +184,23 @@ species_not_in_assessment_shp <- mammals_hkh_non_gmba |>
 
 sf::st_write(
   species_not_in_assessment_shp,
-  paste0(data_storage_path, "Datasets/species_list/mammals_missing.gpkg"),
-  layer = "hkh_mammals",
-  delete_layer = TRUE
+  paste0(data_storage_path, "Datasets/species_list/mammals_missing.shp")
 )
+
+
+species_not_in_assessment_shp <- sf::st_read( paste0(data_storage_path, "Datasets/species_list/mammals_missing.gpkg"))
+
+# species list dataframe
+species_df <- species_not_in_assessment_shp |>
+  st_drop_geometry() 
+
+# save as excel
+writexl::write_xlsx(
+  species_df,
+  path = file.path(
+    data_storage_path,
+    "Datasets/species_list/HKH_non_GMBA_species.xlsx"
+  )
+)
+
+
