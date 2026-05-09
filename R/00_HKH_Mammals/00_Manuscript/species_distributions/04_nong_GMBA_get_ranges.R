@@ -153,8 +153,8 @@ mammals_multi_filter <- species_overlap_filtered |>
 
 sf::st_write(
   mammals_multi_filter,
-  paste0(data_storage_path, "Datasets/species_list/hkh_mammals_missing_filtered.shp"),
-  layer = "hkh_mammals_missing",
+  paste0(data_storage_path, "Datasets/species_list/hkh_mammals_missing_filtered.gpkg"),
+  layer = "hkh_mammals_missing_filtered",
   delete_layer = TRUE
 )
 
