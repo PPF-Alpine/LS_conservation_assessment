@@ -93,6 +93,7 @@ temp_gradient_km[temp_gradient_km < 0.001] <- NA
 clim_velocity_temp <- abs(temp_trend) / temp_gradient_km
 clim_velocity_temp[is.infinite(clim_velocity_temp)] <- NA
 
+x11()
 plot(clim_velocity_temp)
 
 #----------------------------------------------------------#
@@ -199,45 +200,169 @@ plot(prec_mountain_future,main = "prec future")
 global(temp_mountain, range, na.rm = TRUE)
 global(temp_mountain_future, range, na.rm = TRUE)
 global(temp_change, range, na.rm = TRUE)
+
+
 #----------------------------------------------------------#
-#    climate velocity
+#    climate velocity: temperature
 #----------------------------------------------------------#
 
-# CHELSA bio1 is often stored as °C * 10
+# Climate velocity asks:
+# "How far would a species need to move per year to keep the same temperature?"
+#
+# It is calculated as:
+# climate velocity = temporal temperature change / spatial temperature gradient
+#
+# Units:
+# (°C / year) / (°C / km) = km / year
+
+
+#----------------------------------------------------------#
+# 1. Prepare temperature rasters
+#----------------------------------------------------------#
+
+# Current temperature is already in °C
 annual_temp <- temp_mountain
+
+# Future CHELSA bio1 appears to be stored as °C * 10,
+# so divide by 10 to convert it back to °C
 annual_temp_ssp85 <- temp_mountain_future / 10
 
+
+#----------------------------------------------------------#
+# 2. Calculate temperature change
+#----------------------------------------------------------#
+
+# Future minus current temperature
+# Positive values = warming
+# Negative values = cooling
 temp_change <- annual_temp_ssp85 - annual_temp
 
 global(temp_change, range, na.rm = TRUE)
-plot(temp_change)
+plot(temp_change, main = "Temperature change")
 
-# years between midpoints:
-# current = 1981-2010 midpoint ~1995.5
-# future = 2041-2070 midpoint ~2055.5
+
+#----------------------------------------------------------#
+# 3. Convert temperature change to annual trend
+#----------------------------------------------------------#
+
+# Current period: 1981–2010, midpoint = 1995.5
+# Future time slice: 2055
 current_year <- 1995.5
 future_year  <- 2055
 
 years_diff <- future_year - current_year
 
-temp_trend <- temp_change / years_diff   # °C/year
-plot(temp_trend)
+# This gives warming rate in °C per year
+temp_trend <- temp_change / years_diff
 
-# spatial gradient
+plot(temp_trend, main = "Temperature trend (°C/year)")
+
+
+#----------------------------------------------------------#
+# 4. Calculate spatial temperature gradient
+#----------------------------------------------------------#
+
+# The spatial gradient describes how quickly temperature changes across space.
+#
+# In mountains, temperature often changes quickly over short distances,
+# so the spatial gradient is high.
+#
+# In flat or climatically uniform areas, temperature changes slowly across space,
+# so the spatial gradient is low.
+
 slope_temp <- terrain(
   annual_temp,
   v = "slope",
   unit = "radians"
 )
 
+# Convert slope angle to temperature change per km.
+# This gives the denominator of climate velocity: °C/km
 temp_gradient_km <- tan(slope_temp) * 1000
 
-# remove tiny gradients to avoid crazy values
-temp_gradient_km[temp_gradient_km < 0.001] <- NA
+plot(temp_gradient_km, main = "Spatial temperature gradient (°C/km)")
 
+
+#----------------------------------------------------------#
+# 5. Avoid division by very small gradients
+#----------------------------------------------------------#
+
+# Climate velocity becomes unstable when  spatial gradient is very close to zero.
+#
+# Example:
+# 0.03 °C/year / 0.00001 °C/km = extremely large velocity
+#
+# These huge values are often numerical artefacts from nearly flat climate surfaces.
+#
+# Instead of setting them to NA, we set a minimum gradient of 0.001 °C/km.
+# This means that any gradient smaller than 0.001 is treated as 0.001.
+#
+# This avoids holes in the map and prevents unrealistically huge values.
+# 0.001 °C/km is conservative because it only affects the very weakest gradients.
+
+temp_gradient_km[temp_gradient_km < 0.001] <- 0.001
+
+
+#----------------------------------------------------------#
+# 6. Calculate climate velocity
+#----------------------------------------------------------#
+
+# Climate velocity:
+# (°C/year) / (°C/km) = km/year
 clim_velocity_temp <- abs(temp_trend) / temp_gradient_km
-clim_velocity_temp[is.infinite(clim_velocity_temp)] <- 0
 
-plot(clim_velocity_temp)
-plot(temp_gradient_km)
-plot(is.na(temp_gradient_km))
+# Remove infinite values if any remain
+clim_velocity_temp[is.infinite(clim_velocity_temp)] <- NA
+
+
+#----------------------------------------------------------#
+# 7. Cap extreme outliers for stability/visualisation
+#----------------------------------------------------------#
+
+# Loarie-style climate velocity can still produce a few very large outliers.
+# These can dominate the colour scale and make the map hard to interpret.
+#
+# Here we cap values at the 99th percentile.
+# This keeps the spatial pattern but prevents a few extreme cells from dominating.
+
+q99 <- global(
+  clim_velocity_temp,
+  quantile,
+  probs = 0.99,
+  na.rm = TRUE
+)[1, 1]
+
+clim_velocity_temp_capped <- clamp(
+  clim_velocity_temp,
+  upper = q99
+)
+
+
+#----------------------------------------------------------#
+# 8. Plot results
+#----------------------------------------------------------#
+
+plot(
+  clim_velocity_temp,
+  main = "Temperature climate velocity (km/year)"
+)
+
+plot(
+  clim_velocity_temp_capped,
+  main = "Temperature climate velocity, capped at 99th percentile"
+)
+
+plot(
+  temp_gradient_km,
+  main = "Spatial temperature gradient after minimum threshold"
+)
+
+#----------------------------------------------------------#
+# save results as tif 
+#----------------------------------------------------------#
+
+writeRaster(
+  clim_velocity_temp_capped,
+  "~/Desktop/Manuscripts/Ch_2_HKH_mammals/Datasets/climate_shift/clim_velocity/clim_velocity_temp_capped.tif",
+  overwrite = TRUE
+)
