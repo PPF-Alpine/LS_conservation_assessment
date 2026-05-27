@@ -1,33 +1,42 @@
 
 
 source(here::here("R/00_Config_file_HKH.R"))
-
+library(terra)
+library(sf)
 #---------------------------------------------#
 # Input data
 #---------------------------------------------#
 
+##============================================================#
+# Load input rasters
+#============================================================#
+
+# load biodiv imp, climate velocity and human footprint 
 biodiv_imp <- rast(file.path(data_storage_path, "Output/biodiv_dimensions/biodiv_imp.tif"))
 clim_velocity_temp <- terra::rast(file.path(data_storage_path, "Datasets/climate_shift/clim_velocity/clim_velocity_temp_capped.tif"))
 hfi <- rast(file.path(data_storage_path, "Datasets/hfi/hfi_hkh.tif"))
 
-#---------------------------------------------#
-# get border segments
-#---------------------------------------------#
 
+#============================================================#
+# Load border segments and create buffers
+#============================================================#
+
+# border segments and create buffer around each segment
 border_segments <- sf::st_read(paste0(data_storage_path, "Output/transboundary/borders_segments_100_countrypairs.shp"))
 plot(border_segments$geom)
 
-
 # create 10km or 100 km ? buffer around each segment
-
 buffer_dist <- 100000 
 
 segment_buffers <- st_buffer(border_segments, dist = buffer_dist)
 
 plot(segment_buffers)
-#---------------------------------------------#
-# bring to ssame extent and resolution 
-#---------------------------------------------#
+
+
+#============================================================#
+# Bring rasters to same extent and resolution
+#============================================================#
+
 template <- clim_velocity_temp
 
 # crop biodiversity to climate extent/grid
@@ -37,7 +46,6 @@ biodiv_rs <- resample(biodiv_rs, template, method = "bilinear")
 # resample HFI down to climate grid
 hfi_rs <- crop(hfi, template)
 hfi_rs <- resample(hfi_rs, template, method = "bilinear")
-
 
 template[!is.na(template)] <- 1
 
@@ -49,9 +57,25 @@ hfi_rs <- mask(hfi_rs, template)
 
 plot(hfi_rs)
 
-#---------------------------------------------#
-# summarise border segments 
-#---------------------------------------------#
+#============================================================#
+# Scale rasters to 0–1
+#============================================================#
+
+scale01 <- function(x) {
+  (x - global(x, "min", na.rm = TRUE)[1,1]) /
+    (global(x, "max", na.rm = TRUE)[1,1] -
+       global(x, "min", na.rm = TRUE)[1,1])
+}
+
+biodiv_01 <- scale01(biodiv_rs)
+clim_01   <- scale01(clim_velocity_temp)
+hfi_01    <- scale01(hfi_rs)
+
+
+#============================================================#
+# Summarise border segments
+#============================================================#
+
 # Convert border segments to terra vector
 border_segments_v <- terra::vect(segment_buffers)
 
@@ -59,8 +83,13 @@ border_segments_v <- terra::vect(segment_buffers)
 border_segments_v <- terra::project(border_segments_v, terra::crs(biodiv_imp))
 
 
+#------------------------------------------------------------#
+# Extract mean and 90th percentile values per segment
+#------------------------------------------------------------#
+
+# extract biodiversity values in each border segment
 biodiv_mean <- terra::extract(
-  biodiv_rs,
+  biodiv_01,
   border_segments_v,
   fun = mean,
   na.rm = TRUE
@@ -68,7 +97,7 @@ biodiv_mean <- terra::extract(
   dplyr::rename(biodiv_mean = GMTED2010_30)
 
 biodiv_q90 <- terra::extract(
-  biodiv_rs,
+  biodiv_01,
   border_segments_v,
   fun = function(x, na.rm=TRUE)
     quantile(x, 0.9, na.rm = na.rm),
@@ -77,7 +106,7 @@ biodiv_q90 <- terra::extract(
   dplyr::rename(biodiv_q90 = GMTED2010_30)
 
 clim_mean <- terra::extract(
-  clim_velocity_temp,
+  clim_01,
   border_segments_v,
   fun = mean,
   na.rm = TRUE
@@ -85,7 +114,7 @@ clim_mean <- terra::extract(
   dplyr::rename(clim_mean = bio01)
 
 clim_q90 <- terra::extract(
-  clim_velocity_temp,
+  clim_01,
   border_segments_v,
   fun = function(x, na.rm=TRUE)
     quantile(x, 0.9, na.rm = na.rm),
@@ -94,7 +123,7 @@ clim_q90 <- terra::extract(
   dplyr::rename(clim_q90 = bio01)
 
 hfi_mean <- terra::extract(
-  hfi_rs,
+  hfi_01,
   border_segments_v,
   fun = mean,
   na.rm = TRUE
@@ -102,7 +131,7 @@ hfi_mean <- terra::extract(
   dplyr::rename(hfi_mean = "hii_2020-01-01")
 
 hfi_q90 <- terra::extract(
-  hfi_rs,
+  hfi_01,
   border_segments_v,
   fun = function(x, na.rm=TRUE)
     quantile(x, 0.9, na.rm = na.rm),
@@ -110,6 +139,10 @@ hfi_q90 <- terra::extract(
 )|>
   dplyr::rename(hfi_q90 = "hii_2020-01-01")
 
+
+#------------------------------------------------------------#
+# Join extracted statistics back to border segments
+#------------------------------------------------------------#
 
 border_segment_stats <- border_segments |>
   mutate(ID = row_number()) |>
@@ -121,6 +154,10 @@ border_segment_stats <- border_segments |>
   left_join(hfi_q90, by = "ID")
 
 
+#============================================================#
+# Plot segment-level 90th percentile values
+#============================================================#
+
 plot_df <- border_segment_stats %>%
   st_drop_geometry() %>%
   select(
@@ -130,14 +167,6 @@ plot_df <- border_segment_stats %>%
     clim_mean,
     hfi_mean,
     biodiv_q90,clim_q90,hfi_q90
-  ) %>%
-  mutate(
-    biodiv_mean = scale(biodiv_mean)[,1],
-    clim_mean   = scale(clim_mean)[,1],
-    hfi_mean    = scale(hfi_mean)[,1],
-    biodiv_q90 = scale(biodiv_q90)[,1],
-    clim_q90   = scale(clim_q90)[,1],
-    hfi_q90    = scale(hfi_q90)[,1]
   ) %>%
   pivot_longer(
     cols = c(biodiv_q90, clim_q90, hfi_q90),
@@ -162,18 +191,21 @@ ggplot(plot_df,
     axis.text.x = element_blank(),
     panel.grid.minor = element_blank()
   )
-#---------------------------------------------#
-# extract all pixels per border segment
-#---------------------------------------------#
-biodiv_pix <- terra::extract(biodiv_rs, border_segments_v) |>
+
+
+#============================================================#
+# Extract all pixels per border segment
+#============================================================#
+
+biodiv_pix <- terra::extract(biodiv_01, border_segments_v) |>
   rename(value = GMTED2010_30) |>
   mutate(variable = "Biodiversity importance")
 
-clim_pix <- terra::extract(clim_velocity_temp, border_segments_v) |>
+clim_pix <- terra::extract(clim_01, border_segments_v) |>
   rename(value = bio01) |>
   mutate(variable = "Climate velocity")
 
-hfi_pix <- terra::extract(hfi_rs, border_segments_v) |>
+hfi_pix <- terra::extract(hfi_01, border_segments_v) |>
   rename(value = `hii_2020-01-01`) |>
   mutate(variable = "Human footprint")
 
@@ -187,15 +219,13 @@ pixel_df <- bind_rows(biodiv_pix, clim_pix, hfi_pix) |>
   filter(!is.na(value))
 
 
-pixel_df <- pixel_df |>
-  group_by(variable) |>
-  mutate(value_scaled = as.numeric(scale(value))) |>
-  ungroup()
+#============================================================#
+# Plot all segments for country pairs
+#============================================================#
 
-# plot all segments for country pairs 
-#---------------------------------------------#
+#------------------------------------------------------------#
 # Settings
-#---------------------------------------------#
+#------------------------------------------------------------#
 
 out_dir <- paste0(data_storage_path, "Output/transboundary/")
 
@@ -214,15 +244,16 @@ base_violin_theme <- theme_minimal() +
     axis.text = element_text(size = 14)
   )
 
-#---------------------------------------------#
+
+#------------------------------------------------------------#
 # Plot function: country-pair violin plots
-#---------------------------------------------#
+#------------------------------------------------------------#
 
 make_pair_violin_plot <- function(df) {
   
   ggplot(df,
          aes(y = variable,
-             x = value_scaled,
+             x = value,
              fill = variable)) +
     
     geom_violin(
@@ -250,23 +281,10 @@ make_pair_violin_plot <- function(df) {
     base_violin_theme
 }
 
-#---------------------------------------------#
-# Plot all country pairs
-#---------------------------------------------#
 
-prio10 <- make_pair_violin_plot(pixel_df)
-
-ggsave(
-  filename = paste0(out_dir, "prio10.png"),
-  plot = prio10,
-  width = 9,
-  height = 18,
-  dpi = 300
-)
-
-#---------------------------------------------#
+#------------------------------------------------------------#
 # Split country pairs into two plots
-#---------------------------------------------#
+#------------------------------------------------------------#
 
 pair_levels <- unique(pixel_df$pair_id)
 
@@ -279,9 +297,10 @@ pixel_df_1 <- pixel_df |>
 pixel_df_2 <- pixel_df |>
   filter(pair_id %in% pair_set2)
 
-#---------------------------------------------#
+
+#------------------------------------------------------------#
 # Plot split figures
-#---------------------------------------------#
+#------------------------------------------------------------#
 
 prio10_1 <- make_pair_violin_plot(pixel_df_1)
 prio10_2 <- make_pair_violin_plot(pixel_df_2)
@@ -302,23 +321,26 @@ ggsave(
   dpi = 300
 )
 
-#---------------------------------------------#
+plot(prio10_2)
+plot(prio10_1)
+
+
+#============================================================#
 # Plot individual segments for one country pair
-#---------------------------------------------#
+#============================================================#
 
 pixel_segid <- pixel_df |>
   mutate(segment_id = paste0(pair_id, "_seg", seg_id))
 
-pair_name <- "China_Myanmar"
+pair_name <- "Nepal_India"
 
 pixel_df_one_pair <- pixel_segid |>
   filter(pair_id == pair_name) |>
   mutate(segment_id = paste0("seg ", seg_id))
 
-
 seg_plot <- ggplot(pixel_df_one_pair,
                    aes(y = variable,
-                       x = value_scaled,
+                       x = value,
                        fill = variable)) +
   
   geom_violin(
@@ -360,3 +382,12 @@ ggsave(
   dpi = 300
 )
 
+###
+
+global(clim_velocity_temp, c("min", "max", "mean", "sd"), na.rm=TRUE)
+global(biodiv_imp, c("min", "max", "mean", "sd"), na.rm=TRUE)
+global(hfi, c("min", "max", "mean", "sd"), na.rm=TRUE)
+global(clim_velocity_temp,
+       quantile,
+       probs = c(0, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 1),
+       na.rm = TRUE)

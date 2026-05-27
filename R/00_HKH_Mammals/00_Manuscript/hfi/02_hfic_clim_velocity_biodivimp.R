@@ -36,6 +36,7 @@ plot(hfi_rs)
 
 plot(clim_velocity_temp)
 
+# bind all values together
 vals <- cbind(
   values(clim_velocity_temp),
   values(hfi_rs)
@@ -64,7 +65,7 @@ ggplot(vals,
 # how does biodiv importance relate to clim velocity and hfi 
 #---------------------------------------------#
 
-# scale 0–1
+# scale by min and max value 0–1
 scale01 <- function(x) {
   (x - global(x, "min", na.rm = TRUE)[1,1]) /
     (global(x, "max", na.rm = TRUE)[1,1] -
@@ -91,110 +92,11 @@ threedim<- plotRGB(
 tri_rgb <- scale(tri_stack) * 255
 tri_rgb <- round(tri_rgb)
 
+
+plot(threedim)
 writeRaster(
   tri_rgb,
   file.path(data_storage_path,"Output/priority_indices/threedim_rgb.tif"),
   overwrite = TRUE
 )
 
-
-#----------------------------------------------------------#
-# add  legend
-#----------------------------------------------------------#
-
-draw_rgb_triangle <- function(
-    x_offset = 0,
-    y_offset = 0,
-    scale = 1,
-    n = 100,
-    add_labels = TRUE
-){
-  
-  # triangle coordinates
-  x <- c(0, 1, 0.5)
-  y <- c(0, 0, sqrt(3)/2)
-  
-  for(i in 1:n){
-    for(j in 1:n){
-      
-      a <- i/n
-      b <- j/n
-      c <- 1 - a - b
-      
-      if(c >= 0){
-        
-        col <- rgb(
-          red   = a,
-          green = b,
-          blue  = c
-        )
-        
-        px <- a*x[1] + b*x[2] + c*x[3]
-        py <- a*y[1] + b*y[2] + c*y[3]
-        
-        points(
-          px * scale + x_offset,
-          py * scale + y_offset,
-          pch = 15,
-          cex = 0.5,
-          col = col
-        )
-      }
-    }
-  }
-  
-  if(add_labels){
-    text(x_offset, y_offset - 2, "biodiv", adj = 0)
-    text(x_offset + scale, y_offset - 2,
-         "clim vel", adj = 1)
-    text(x_offset + scale/2,
-         y_offset + sqrt(3)/2 * scale + 2,
-         "HFI")
-  }
-}
-
-# empty plotting area for legend only
-par(mar = c(5, 4, 4, 4))
-
-plot(
-  NA,
-  xlim = c(0, 10),
-  ylim = c(-1.5, 10),
-  asp = 1,
-  axes = FALSE,
-  xlab = "",
-  ylab = ""
-)
-
-draw_rgb_triangle(
-  n = 180,
-  scale = 8,
-  x_offset = 1,
-  y_offset = 1
-)
-
-#----------------------------------------------------------#
-# add  the borders on top of the plot 
-#----------------------------------------------------------#
-cons_prio <- terra::rast(paste0(data_storage_path, "Output/priority_indices/threedim_rgb.tif"))
-border_segments <- sf::st_read(paste0(data_storage_path, "Output/transboundary/borders_segments_100_countrypairs.shp"))
-library(terra)
-library(sf)
-
-border_segments <- st_transform(border_segments, crs(cons_prio))
-border_segments_v <- vect(border_segments)
-
-plotRGB(
-  cons_prio,
-  r = 1,
-  g = 2,
-  b = 3,
-  stretch = "lin"
-)
-
-plot(
-  border_segments_v,
-  add = TRUE,
-  col = "white",
-  lwd = 2
-)
